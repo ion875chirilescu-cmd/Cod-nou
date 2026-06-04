@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0E0E10" />
+<title>Select Academy — CRM</title>
+<style>
+/* ============================================================
+   SELECT ACADEMY — CRM
+   Aplicație într-un singur fișier. Rulează direct în browser.
+   Date salvate local (localStorage). Responsive: desktop + mobil.
+   Paletă: dark + auriu (brand Select).
+   ============================================================ */
+:root{
+  --bg:#0E0E10; --surface:#17171A; --surface-alt:#1F1F24; --surface-3:#2A2A30;
+  --primary:#E8273A; --primary-dark:#C41E2E; --primary-soft:rgba(232,39,58,.15);
+  --text:#F5F5F5; --muted:#97979F; --border:#2A2A30;
+  --success:#3FB562; --warning:#E0A800; --danger:#E8273A; --info:#4F9DDE;
+  --r-sm:8px; --r-md:12px; --r-lg:18px;
+  --shadow:0 8px 30px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+  font-size:15px; line-height:1.45;
+}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+input,select,textarea{font-family:inherit; font-size:15px}
+a{color:var(--primary); text-decoration:none}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:10px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- Layout ---------- */
+.app{display:flex; min-height:100vh}
+.sidebar{
+  width:236px; background:var(--surface); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; position:fixed; top:0; bottom:0; left:0; z-index:40;
+}
+.brand{padding:22px 18px 18px; border-bottom:1px solid var(--border)}
+.wordmark{font-weight:900; font-size:24px; line-height:.92; letter-spacing:-.5px}
+.wordmark .sel{color:var(--text); display:block}
+.wordmark .aca{color:var(--primary); display:block; font-size:15px; letter-spacing:5.5px; margin-top:3px; margin-left:1px}
+.brand .tag{display:block;color:var(--muted);font-weight:600;font-size:10px;letter-spacing:2px;margin-top:9px;text-transform:uppercase}
+.nav{flex:1; padding:12px 10px; overflow-y:auto}
+.nav button{
+  display:flex; align-items:center; gap:12px; width:100%; padding:11px 13px; border-radius:var(--r-md);
+  color:var(--muted); font-size:14.5px; font-weight:500; margin-bottom:3px; transition:.15s; text-align:left;
+}
+.nav button .ic{width:20px;text-align:center;font-size:17px}
+.nav button:hover{background:var(--surface-alt); color:var(--text)}
+.nav button.active{background:var(--primary-soft); color:var(--primary); font-weight:600}
+.nav-footer{padding:12px 14px; border-top:1px solid var(--border); color:var(--muted); font-size:11.5px}
+
+.main{flex:1; margin-left:236px; min-width:0; display:flex; flex-direction:column}
+.topbar{
+  position:sticky; top:0; z-index:30; background:rgba(15,15,18,.85); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border); padding:14px 26px;
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+}
+.topbar h1{font-size:20px; font-weight:700; flex:1; min-width:140px}
+.content{padding:24px 26px 90px; max-width:1280px; width:100%; margin:0 auto}
+
+/* ---------- Period selector ---------- */
+.period{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.period select,.period input[type=date]{
+  background:var(--surface-alt); color:var(--text); border:1px solid var(--border);
+  border-radius:var(--r-sm); padding:8px 10px; font-size:13.5px;
+}
+.period .seg{display:flex; background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden}
+.period .seg button{padding:8px 12px; font-size:13px; color:var(--muted); font-weight:600}
+.period .seg button.active{background:var(--primary); color:#fff}
+
+/* ---------- Cards / KPIs ---------- */
+.grid{display:grid; gap:16px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); margin-bottom:18px}
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:18px 20px;
+}
+.kpi{position:relative; overflow:hidden}
+.kpi .label{color:var(--muted); font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:.6px}
+.kpi .value{font-size:27px; font-weight:800; margin-top:7px; letter-spacing:-.5px}
+.kpi .sub{font-size:12.5px; color:var(--muted); margin-top:3px}
+.kpi .ic{position:absolute; top:16px; right:18px; font-size:22px; opacity:.85}
+.kpi.green .value{color:var(--success)} .kpi.red .value{color:var(--danger)}
+.kpi.gold .value{color:var(--primary)} .kpi.blue .value{color:var(--info)}
+
+.section-title{font-size:15px; font-weight:700; margin:24px 0 12px; display:flex; align-items:center; gap:8px}
+.row2{grid-template-columns:1.6fr 1fr}
+.row1{grid-template-columns:1fr}
+
+/* ---------- Chart ---------- */
+.chart-wrap{overflow-x:auto}
+.bars{display:flex; align-items:flex-end; gap:10px; height:200px; padding-top:10px; min-width:480px}
+.bar-col{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; min-width:34px}
+.bar-stack{display:flex; align-items:flex-end; gap:3px; height:170px; width:100%; justify-content:center}
+.bar{width:13px; border-radius:4px 4px 0 0; transition:.3s; min-height:2px}
+.bar.inc{background:linear-gradient(180deg,var(--success),#2f7d32)}
+.bar.exp{background:linear-gradient(180deg,var(--danger),#9d3a3a)}
+.bar-col .lbl{font-size:11px; color:var(--muted); font-weight:600}
+.legend{display:flex; gap:18px; margin-top:6px; font-size:12.5px; color:var(--muted); flex-wrap:wrap}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+/* donut */
+.donut-wrap{display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+.donut-legend{flex:1; min-width:150px; font-size:13px}
+.donut-legend .li{display:flex; align-items:center; gap:8px; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--border)}
+.donut-legend .li:last-child{border-bottom:none}
+.donut-legend .li .nm{display:flex;align-items:center;gap:8px}
+
+/* ---------- Tables ---------- */
+.toolbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+.search{
+  flex:1; min-width:160px; background:var(--surface-alt); border:1px solid var(--border);
+  border-radius:var(--r-sm); padding:9px 12px; color:var(--text);
+}
+.table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:var(--r-lg); background:var(--surface)}
+table{width:100%; border-collapse:collapse; min-width:560px}
+th,td{padding:12px 14px; text-align:left; font-size:13.7px; border-bottom:1px solid var(--border); white-space:nowrap}
+th{color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.5px; position:sticky; top:0; background:var(--surface)}
+tbody tr:hover{background:var(--surface-alt)}
+tbody tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
+.row-actions{display:flex; gap:6px; justify-content:flex-end}
+.icon-btn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--muted);font-size:14px}
+.icon-btn:hover{background:var(--surface-3); color:var(--text)}
+.icon-btn.danger:hover{color:var(--danger)}
+
+.badge{display:inline-block; padding:3px 9px; border-radius:999px; font-size:11.5px; font-weight:700; letter-spacing:.2px}
+.b-green{background:rgba(76,175,80,.16);color:#7bd17f}
+.b-gold{background:var(--primary-soft);color:var(--primary)}
+.b-red{background:rgba(224,85,85,.16);color:#f08a8a}
+.b-gray{background:var(--surface-3);color:var(--muted)}
+.b-blue{background:rgba(79,157,222,.16);color:#86c1ef}
+
+.empty{text-align:center; padding:46px 20px; color:var(--muted)}
+.empty .big{font-size:38px; margin-bottom:10px}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex; align-items:center; gap:7px; padding:9px 15px; border-radius:var(--r-sm);
+  font-weight:600; font-size:13.7px; transition:.15s; white-space:nowrap;
+}
+.btn-primary{background:var(--primary); color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-ghost{background:var(--surface-alt); color:var(--text); border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--surface-3)}
+.btn-danger{background:rgba(224,85,85,.15); color:#f08a8a; border:1px solid rgba(224,85,85,.3)}
+.btn-danger:hover{background:rgba(224,85,85,.25)}
+.btn-sm{padding:6px 11px; font-size:12.5px}
+
+/* ---------- Modal ---------- */
+.overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px);
+  display:none; align-items:center; justify-content:center; z-index:100; padding:16px;
+}
+.overlay.open{display:flex}
+.modal{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  width:100%; max-width:520px; max-height:92vh; overflow-y:auto; box-shadow:var(--shadow);
+  animation:pop .18s ease;
+}
+@keyframes pop{from{transform:translateY(14px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.modal-head{display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:17px;font-weight:700}
+.modal-body{padding:20px}
+.modal-foot{padding:16px 20px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end}
+.field{margin-bottom:14px}
+.field label{display:block; font-size:12.5px; color:var(--muted); font-weight:600; margin-bottom:6px}
+.field input,.field select,.field textarea{
+  width:100%; background:var(--surface-alt); border:1px solid var(--border); color:var(--text);
+  border-radius:var(--r-sm); padding:10px 12px;
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--primary)}
+.field textarea{resize:vertical;min-height:64px}
+.field-row{display:flex; gap:12px} .field-row .field{flex:1}
+.hint{font-size:11.5px;color:var(--muted);margin-top:5px}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--surface-3); color:var(--text); padding:12px 20px; border-radius:var(--r-md);
+  border:1px solid var(--border); box-shadow:var(--shadow); z-index:200; opacity:0; transition:.25s;
+  font-size:14px; font-weight:600; display:flex; align-items:center; gap:9px; pointer-events:none;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--success)} .toast.err{border-color:var(--danger)}
+
+/* ---------- Mobile nav ---------- */
+.mobile-nav{display:none}
+.hamburger{display:none}
+.overlay-nav{display:none}
+
+/* progress bar in table */
+.pbar{height:6px;background:var(--surface-3);border-radius:6px;overflow:hidden;min-width:70px}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-dark))}
+
+.pill-filter{display:flex;gap:6px;flex-wrap:wrap}
+.pill-filter button{padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:600;background:var(--surface-alt);border:1px solid var(--border);color:var(--muted)}
+.pill-filter button.active{background:var(--primary-soft);border-color:var(--primary);color:var(--primary)}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:860px){
+  .row2{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .sidebar{display:none}
+  .main{margin-left:0}
+  .hamburger{display:grid; place-items:center; width:40px;height:40px;border-radius:10px;background:var(--surface-alt);border:1px solid var(--border);font-size:18px}
+  .topbar{padding:12px 16px}
+  .topbar h1{font-size:17px}
+  .content{padding:16px 14px 96px}
+  /* Bottom tab bar */
+  .mobile-nav{
+    display:flex; position:fixed; bottom:0; left:0; right:0; z-index:50;
+    background:var(--surface); border-top:1px solid var(--border); padding:6px 4px 8px;
+    justify-content:space-around;
+  }
+  .mobile-nav button{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--muted); font-size:10px; font-weight:600; padding:4px 2px}
+  .mobile-nav button .ic{font-size:19px}
+  .mobile-nav button.active{color:var(--primary)}
+  /* Slide-out full menu */
+  .overlay-nav{position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.5); display:none}
+  .overlay-nav.open{display:block}
+  .drawer{position:absolute; top:0; left:0; bottom:0; width:250px; background:var(--surface); border-right:1px solid var(--border); transform:translateX(-100%); transition:.22s; display:flex; flex-direction:column}
+  .overlay-nav.open .drawer{transform:none}
+  .kpi .value{font-size:23px}
+  .modal-foot{position:sticky;bottom:0;background:var(--surface)}
+}
+@media(max-width:420px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi{padding:14px}
+  .kpi .value{font-size:20px}
+  .kpi .ic{display:none}
+}
+
+/* print (rapoarte) */
+@media print{
+  .sidebar,.topbar,.mobile-nav,.toolbar,.no-print{display:none!important}
+  .main{margin:0} .content{padding:0} body{background:#fff;color:#000}
+  .card{border-color:#ccc;break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ===== Sidebar (desktop) ===== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="wordmark"><span class="sel">SELECT</span><span class="aca">ACADEMY</span></div>
+      <span class="tag">CRM · Barber</span>
+    </div>
+    <nav class="nav" id="navDesktop"></nav>
+    <div class="nav-footer">
+      <div id="dbStamp">—</div>
+      <div style="margin-top:4px">v1.0 · date locale</div>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" onclick="toggleDrawer(true)">☰</button>
+      <h1 id="pageTitle">Tablou de bord</h1>
+      <div id="topbarExtra"></div>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+
+<!-- Bottom nav (mobile) -->
+<nav class="mobile-nav" id="navMobile"></nav>
+
+<!-- Drawer (mobile full menu) -->
+<div class="overlay-nav" id="drawer" onclick="if(event.target===this)toggleDrawer(false)">
+  <div class="drawer">
+    <div class="brand">
+      <div class="wordmark"><span class="sel">SELECT</span><span class="aca">ACADEMY</span></div>
+      <span class="tag">CRM · Barber</span>
+    </div>
+    <nav class="nav" id="navDrawer"></nav>
+  </div>
+</div>
+
+<!-- Modal + toast -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   STORE — persistență localStorage
+   ============================================================ */
+const KEY='select_academy_crm_v1';
+const CURRENCY='lei';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+const DEFAULT_COURSES=[
+  {id:'c_zero', name:'Barber de la zero',  type:'Individual', defaultPrice:4500, color:'#E8273A'},
+  {id:'c_indiv',name:'Curs individual',    type:'Individual', defaultPrice:3500, color:'#4F9DDE'},
+  {id:'c_grup', name:'Curs în grup',       type:'Grup',       defaultPrice:2500, color:'#3FB562'},
+  {id:'c_master',name:'Masterclass',       type:'Masterclass',defaultPrice:1200, color:'#B57EDC'},
+  {id:'c_perf', name:'Perfecționare',      type:'Perfecționare',defaultPrice:1500,color:'#E0A800'},
+];
+const EXPENSE_CATS=['Chirie','Materiale & consumabile','Salarii & colaboratori','Marketing & publicitate','Utilități','Echipamente','Taxe & impozite','Altele'];
+const PAY_METHODS=['Numerar','Card','Transfer bancar','Online'];
+
+let DB=load();
+
+function blankDB(){
+  return {courses:JSON.parse(JSON.stringify(DEFAULT_COURSES)), students:[], payments:[], expenses:[], settings:{academyName:'Select Academy'}, createdAt:Date.now()};
+}
+function load(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(!raw) return blankDB();
+    const d=JSON.parse(raw);
+    d.courses=d.courses||JSON.parse(JSON.stringify(DEFAULT_COURSES));
+    d.students=d.students||[]; d.payments=d.payments||[]; d.expenses=d.expenses||[];
+    d.settings=d.settings||{academyName:'Select Academy'};
+    return d;
+  }catch(e){ return blankDB(); }
+}
+function save(){ DB.updatedAt=Date.now(); localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); }
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $=(s,r=document)=>r.querySelector(s);
+const fmt=n=>Number(n||0).toLocaleString('ro-RO',{maximumFractionDigits:0})+' '+CURRENCY;
+const fmt2=n=>Number(n||0).toLocaleString('ro-RO',{minimumFractionDigits:0,maximumFractionDigits:2});
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const todayISO=()=>new Date().toISOString().slice(0,10);
+const MONTHS=['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Noi','Dec'];
+const MONTHS_FULL=['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
+
+function courseById(id){ return DB.courses.find(c=>c.id===id); }
+function studentById(id){ return DB.students.find(s=>s.id===id); }
+function paidFor(studentId){ return DB.payments.filter(p=>p.studentId===studentId).reduce((a,p)=>a+Number(p.amount||0),0); }
+
+function toast(msg,type=''){
+  const t=$('#toast'); t.className='toast show '+type;
+  t.innerHTML=(type==='ok'?'✅ ':type==='err'?'⚠️ ':'')+esc(msg);
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast',2200);
+}
+
+/* ============================================================
+   PERIOADĂ — selector global (afectează Dashboard, Rapoarte)
+   ============================================================ */
+const now=new Date();
+let PERIOD={mode:'month', year:now.getFullYear(), month:now.getMonth(), from:todayISO(), to:todayISO()};
+
+function periodRange(){
+  if(PERIOD.mode==='month'){
+    const f=new Date(PERIOD.year,PERIOD.month,1);
+    const t=new Date(PERIOD.year,PERIOD.month+1,0);
+    return [f.toISOString().slice(0,10), t.toISOString().slice(0,10)];
+  }
+  if(PERIOD.mode==='year'){ return [PERIOD.year+'-01-01', PERIOD.year+'-12-31']; }
+  if(PERIOD.mode==='all'){ return ['0000-01-01','9999-12-31']; }
+  return [PERIOD.from, PERIOD.to]; // custom
+}
+function periodLabel(){
+  if(PERIOD.mode==='month') return MONTHS_FULL[PERIOD.month]+' '+PERIOD.year;
+  if(PERIOD.mode==='year') return 'Anul '+PERIOD.year;
+  if(PERIOD.mode==='all') return 'Toată perioada';
+  return PERIOD.from+' → '+PERIOD.to;
+}
+function inRange(dateStr,f,t){ return dateStr>=f && dateStr<=t; }
+
+/* aggregate income/expense/profit + students for a range */
+function aggregate(f,t){
+  const income=DB.payments.filter(p=>inRange(p.date,f,t)).reduce((a,p)=>a+Number(p.amount||0),0);
+  const expense=DB.expenses.filter(e=>inRange(e.date,f,t)).reduce((a,e)=>a+Number(e.amount||0),0);
+  const newStudents=DB.students.filter(s=>inRange(s.startDate||'',f,t)).length;
+  const activeStudents=DB.students.filter(s=>s.status==='in_curs').length;
+  return {income, expense, profit:income-expense, newStudents, activeStudents};
+}
+
+/* ============================================================
+   ROUTING / NAV
+   ============================================================ */
+const NAV=[
+  {id:'dashboard', label:'Tablou de bord', icon:'📊'},
+  {id:'students',  label:'Cursanți',       icon:'🎓'},
+  {id:'payments',  label:'Încasări',       icon:'💰'},
+  {id:'expenses',  label:'Cheltuieli',     icon:'🧾'},
+  {id:'reports',   label:'Rapoarte',       icon:'📈'},
+  {id:'courses',   label:'Cursuri',        icon:'✂️'},
+  {id:'settings',  label:'Setări & backup',icon:'⚙️'},
+];
+const MOBILE_NAV=['dashboard','students','payments','expenses','reports'];
+let route='dashboard';
+
+function buildNav(){
+  const html=NAV.map(n=>`<button data-r="${n.id}" onclick="go('${n.id}')"><span class="ic">${n.icon}</span>${n.label}</button>`).join('');
+  $('#navDesktop').innerHTML=html;
+  $('#navDrawer').innerHTML=html;
+  $('#navMobile').innerHTML=MOBILE_NAV.map(id=>{const n=NAV.find(x=>x.id===id);return `<button data-r="${n.id}" onclick="go('${n.id}')"><span class="ic">${n.icon}</span>${n.label.split(' ')[0]}</button>`}).join('')
+    +`<button onclick="toggleDrawer(true)"><span class="ic">⋯</span>Mai mult</button>`;
+}
+function go(r){ route=r; toggleDrawer(false); render(); }
+function toggleDrawer(open){ $('#drawer').classList.toggle('open', open); }
+function markActive(){
+  document.querySelectorAll('[data-r]').forEach(b=>b.classList.toggle('active', b.dataset.r===route));
+}
+function renderStamp(){
+  const d=DB.updatedAt?new Date(DB.updatedAt):null;
+  $('#dbStamp').textContent=d?('Salvat: '+d.toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'Nesalvat';
+}
+
+/* ============================================================
+   PERIOD SELECTOR widget (topbar) — for dashboard & reports
+   ============================================================ */
+function periodWidget(){
+  const yrs=[]; for(let y=now.getFullYear();y>=now.getFullYear()-5;y--) yrs.push(y);
+  return `<div class="period">
+    <div class="seg">
+      ${['month','year','all','custom'].map(m=>`<button class="${PERIOD.mode===m?'active':''}" onclick="setPeriodMode('${m}')">${({month:'Lună',year:'An',all:'Tot',custom:'Interval'})[m]}</button>`).join('')}
+    </div>
+    ${PERIOD.mode==='month'?`
+      <select onchange="PERIOD.month=+this.value;render()">${MONTHS_FULL.map((m,i)=>`<option value="${i}" ${i===PERIOD.month?'selected':''}>${m}</option>`).join('')}</select>
+      <select onchange="PERIOD.year=+this.value;render()">${yrs.map(y=>`<option ${y===PERIOD.year?'selected':''}>${y}</option>`).join('')}</select>`:''}
+    ${PERIOD.mode==='year'?`<select onchange="PERIOD.year=+this.value;render()">${yrs.map(y=>`<option ${y===PERIOD.year?'selected':''}>${y}</option>`).join('')}</select>`:''}
+    ${PERIOD.mode==='custom'?`
+      <input type="date" value="${PERIOD.from}" onchange="PERIOD.from=this.value;render()">
+      <input type="date" value="${PERIOD.to}" onchange="PERIOD.to=this.value;render()">`:''}
+  </div>`;
+}
+function setPeriodMode(m){ PERIOD.mode=m; render(); }
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  const titles={dashboard:'Tablou de bord',students:'Cursanți',payments:'Încasări',expenses:'Cheltuieli',reports:'Rapoarte financiare',courses:'Tipuri de cursuri',settings:'Setări & backup'};
+  $('#pageTitle').textContent=titles[route]||'CRM';
+  const showPeriod=(route==='dashboard'||route==='reports');
+  $('#topbarExtra').innerHTML=showPeriod?periodWidget():'';
+  const v=$('#view');
+  if(route==='dashboard') v.innerHTML=viewDashboard();
+  else if(route==='students') v.innerHTML=viewStudents();
+  else if(route==='payments') v.innerHTML=viewPayments();
+  else if(route==='expenses') v.innerHTML=viewExpenses();
+  else if(route==='reports') v.innerHTML=viewReports();
+  else if(route==='courses') v.innerHTML=viewCourses();
+  else if(route==='settings') v.innerHTML=viewSettings();
+  markActive();
+  if(route==='dashboard') drawDashboardChart();
+}
+
+/* ---------- DASHBOARD ---------- */
+function viewDashboard(){
+  const [f,t]=periodRange();
+  const a=aggregate(f,t);
+  const margin=a.income>0?Math.round(a.profit/a.income*100):0;
+  const collected=DB.students.reduce((s,st)=>s+Math.min(paidFor(st.id),Number(st.price||0)),0);
+  const billed=DB.students.reduce((s,st)=>s+Number(st.price||0),0);
+  const outstanding=Math.max(0,billed-DB.students.reduce((s,st)=>s+paidFor(st.id),0));
+
+  return `
+  <div class="grid kpis">
+    <div class="card kpi green"><span class="ic">💰</span><div class="label">Venituri</div><div class="value">${fmt(a.income)}</div><div class="sub">${periodLabel()}</div></div>
+    <div class="card kpi red"><span class="ic">🧾</span><div class="label">Cheltuieli</div><div class="value">${fmt(a.expense)}</div><div class="sub">${periodLabel()}</div></div>
+    <div class="card kpi ${a.profit>=0?'gold':'red'}"><span class="ic">📈</span><div class="label">Profit</div><div class="value">${fmt(a.profit)}</div><div class="sub">Marjă ${margin}%</div></div>
+    <div class="card kpi blue"><span class="ic">🎓</span><div class="label">Cursanți noi</div><div class="value">${a.newStudents}</div><div class="sub">${a.activeStudents} activi în total</div></div>
+  </div>
+
+  <div class="grid row2">
+    <div class="card">
+      <div class="section-title" style="margin-top:0">📊 Evoluție lunară · ${PERIOD.mode==='year'?PERIOD.year:now.getFullYear()}</div>
+      <div class="chart-wrap"><div class="bars" id="dashBars"></div></div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--success)"></i>Venituri</span>
+        <span><i class="dot" style="background:var(--danger)"></i>Cheltuieli</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-top:0">🎯 Încasări pe tip de curs</div>
+      ${donutByCourse(f,t)}
+    </div>
+  </div>
+
+  <div class="grid row2" style="margin-top:18px">
+    <div class="card">
+      <div class="section-title" style="margin-top:0">⏳ Plăți restante</div>
+      ${outstanding>0?`
+        <div class="value" style="font-size:24px;font-weight:800;color:var(--warning)">${fmt(outstanding)}</div>
+        <div class="sub" style="color:var(--muted);font-size:13px;margin:4px 0 12px">de încasat de la cursanți</div>
+        ${debtorsList()}`:`<div class="empty"><div class="big">✅</div>Toți cursanții sunt la zi cu plățile.</div>`}
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-top:0">🕑 Activitate recentă</div>
+      ${recentActivity()}
+    </div>
+  </div>`;
+}
+
+function monthlySeries(year){
+  const inc=Array(12).fill(0), exp=Array(12).fill(0);
+  DB.payments.forEach(p=>{ if(p.date&&+p.date.slice(0,4)===year) inc[+p.date.slice(5,7)-1]+=Number(p.amount||0); });
+  DB.expenses.forEach(e=>{ if(e.date&&+e.date.slice(0,4)===year) exp[+e.date.slice(5,7)-1]+=Number(e.amount||0); });
+  return {inc,exp};
+}
+function drawDashboardChart(){
+  const el=$('#dashBars'); if(!el) return;
+  const year=PERIOD.mode==='year'?PERIOD.year:now.getFullYear();
+  const {inc,exp}=monthlySeries(year);
+  const max=Math.max(1,...inc,...exp);
+  el.innerHTML=MONTHS.map((m,i)=>`
+    <div class="bar-col" title="${MONTHS_FULL[i]}: ${fmt(inc[i])} venit / ${fmt(exp[i])} cheltuieli">
+      <div class="bar-stack">
+        <div class="bar inc" style="height:${Math.round(inc[i]/max*165)}px"></div>
+        <div class="bar exp" style="height:${Math.round(exp[i]/max*165)}px"></div>
+      </div>
+      <div class="lbl">${m}</div>
+    </div>`).join('');
+}
+function donutByCourse(f,t){
+  const map={};
+  DB.payments.filter(p=>inRange(p.date,f,t)).forEach(p=>{
+    const st=studentById(p.studentId); const c=st?courseById(st.courseId):null;
+    const key=c?c.id:'alt'; map[key]=(map[key]||0)+Number(p.amount||0);
+  });
+  const entries=Object.entries(map).map(([id,val])=>{const c=courseById(id);return{name:c?c.name:'Altele',color:c?c.color:'#777',val};}).sort((a,b)=>b.val-a.val);
+  const total=entries.reduce((a,e)=>a+e.val,0);
+  if(total===0) return `<div class="empty"><div class="big">📭</div>Nicio încasare în perioadă.</div>`;
+  let acc=0; const segs=entries.map(e=>{const frac=e.val/total;const s=acc;acc+=frac;return `${e.color} ${(s*100).toFixed(1)}% ${(acc*100).toFixed(1)}%`}).join(',');
+  return `<div class="donut-wrap">
+    <div style="width:140px;height:140px;border-radius:50%;background:conic-gradient(${segs});display:grid;place-items:center;flex-shrink:0">
+      <div style="width:84px;height:84px;border-radius:50%;background:var(--surface);display:grid;place-items:center;text-align:center">
+        <div><div style="font-size:11px;color:var(--muted)">Total</div><div style="font-weight:800;font-size:15px">${fmt(total)}</div></div>
+      </div>
+    </div>
+    <div class="donut-legend">${entries.map(e=>`<div class="li"><span class="nm"><i class="dot" style="background:${e.color}"></i>${esc(e.name)}</span><b>${fmt(e.val)}</b></div>`).join('')}</div>
+  </div>`;
+}
+function debtorsList(){
+  const debt=DB.students.map(s=>({s,bal:Number(s.price||0)-paidFor(s.id)})).filter(x=>x.bal>0).sort((a,b)=>b.bal-a.bal).slice(0,5);
+  if(!debt.length) return '';
+  return `<div style="display:flex;flex-direction:column;gap:8px">${debt.map(({s,bal})=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:13.5px;padding:8px 10px;background:var(--surface-alt);border-radius:8px">
+      <span>${esc(s.name)} <small style="color:var(--muted)">· ${esc((courseById(s.courseId)||{}).name||'')}</small></span>
+      <b style="color:var(--warning)">${fmt(bal)}</b>
+    </div>`).join('')}</div>`;
+}
+function recentActivity(){
+  const items=[
+    ...DB.payments.map(p=>({t:'pay',date:p.date,ts:p.createdAt||0,o:p})),
+    ...DB.expenses.map(e=>({t:'exp',date:e.date,ts:e.createdAt||0,o:e})),
+    ...DB.students.map(s=>({t:'stu',date:s.startDate,ts:s.createdAt||0,o:s})),
+  ].sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,7);
+  if(!items.length) return `<div class="empty"><div class="big">🗒️</div>Nicio activitate încă.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="go('students')">+ Adaugă primul cursant</button></div>`;
+  return `<div style="display:flex;flex-direction:column;gap:9px">${items.map(it=>{
+    if(it.t==='pay'){const st=studentById(it.o.studentId);return rowAct('💰','Încasare '+fmt(it.o.amount),(st?st.name:'—')+' · '+it.date,'var(--success)');}
+    if(it.t==='exp'){return rowAct('🧾','Cheltuială '+fmt(it.o.amount),it.o.category+' · '+it.date,'var(--danger)');}
+    return rowAct('🎓','Cursant nou',it.o.name+' · '+(it.date||''),'var(--info)');
+  }).join('')}</div>`;
+}
+function rowAct(ic,title,sub,color){
+  return `<div style="display:flex;gap:11px;align-items:center">
+    <div style="width:34px;height:34px;border-radius:9px;background:var(--surface-alt);display:grid;place-items:center;font-size:16px;flex-shrink:0">${ic}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">${esc(title)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(sub)}</div></div>
+  </div>`;
+}
+
+/* ---------- STUDENTS ---------- */
+let studentFilter='all', studentSearch='';
+function viewStudents(){
+  let list=DB.students.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(studentFilter!=='all') list=list.filter(s=>s.status===studentFilter);
+  if(studentSearch){const q=studentSearch.toLowerCase();list=list.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.phone||'').includes(q)||((courseById(s.courseId)||{}).name||'').toLowerCase().includes(q));}
+  const counts={all:DB.students.length,in_curs:0,finalizat:0,abandonat:0};
+  DB.students.forEach(s=>counts[s.status]=(counts[s.status]||0)+1);
+
+  return `
+  <div class="toolbar">
+    <input class="search" placeholder="🔎 Caută după nume, telefon, curs…" value="${esc(studentSearch)}" oninput="studentSearch=this.value;rerenderStudents()">
+    <button class="btn btn-primary" onclick="openStudentModal()">＋ Cursant nou</button>
+  </div>
+  <div class="pill-filter" style="margin-bottom:14px">
+    ${[['all','Toți'],['in_curs','În curs'],['finalizat','Finalizați'],['abandonat','Abandonați']].map(([k,l])=>`<button class="${studentFilter===k?'active':''}" onclick="studentFilter='${k}';rerenderStudents()">${l} <b>${counts[k]||0}</b></button>`).join('')}
+  </div>
+  <div id="studentsTable">${studentsTable(list)}</div>`;
+}
+function rerenderStudents(){ $('#studentsTable')&&($('#view').innerHTML=viewStudents(),markActive()); }
+function studentsTable(list){
+  if(!list.length) return `<div class="card empty"><div class="big">🎓</div>Niciun cursant ${studentFilter!=='all'||studentSearch?'pentru filtrul curent':'încă'}.<br>${!studentSearch&&studentFilter==='all'?'<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openStudentModal()">＋ Adaugă primul cursant</button>':''}</div>`;
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Cursant</th><th>Curs</th><th>Început</th><th>Status</th><th class="num">Preț</th><th class="num">Achitat</th><th style="min-width:120px">Progres plată</th><th></th></tr></thead>
+    <tbody>${list.map(s=>{
+      const c=courseById(s.courseId)||{}; const paid=paidFor(s.id); const price=Number(s.price||0);
+      const pct=price>0?Math.min(100,Math.round(paid/price*100)):100; const bal=price-paid;
+      const stB={in_curs:'b-blue',finalizat:'b-green',abandonat:'b-gray'}[s.status]||'b-gray';
+      const stL={in_curs:'În curs',finalizat:'Finalizat',abandonat:'Abandonat'}[s.status]||s.status;
+      return `<tr>
+        <td><b>${esc(s.name)}</b>${s.phone?`<br><small style="color:var(--muted)">${esc(s.phone)}</small>`:''}</td>
+        <td><span class="badge b-gold">${esc(c.name||'—')}</span></td>
+        <td>${esc(s.startDate||'—')}</td>
+        <td><span class="badge ${stB}">${stL}</span></td>
+        <td class="num">${fmt(price)}</td>
+        <td class="num" style="color:${bal>0?'var(--warning)':'var(--success)'}">${fmt(paid)}</td>
+        <td><div style="display:flex;align-items:center;gap:8px"><div class="pbar"><i style="width:${pct}%"></i></div><small style="color:var(--muted)">${pct}%</small></div>${bal>0?`<small style="color:var(--warning)">rest ${fmt(bal)}</small>`:''}</td>
+        <td><div class="row-actions">
+          <button class="icon-btn" title="Adaugă plată" onclick="openPaymentModal('${s.id}')">💰</button>
+          <button class="icon-btn" title="Editează" onclick="openStudentModal('${s.id}')">✏️</button>
+          <button class="icon-btn danger" title="Șterge" onclick="delStudent('${s.id}')">🗑️</button>
+        </div></td>
+      </tr>`;}).join('')}</tbody>
+  </table></div>`;
+}
+function openStudentModal(id){
+  const s=id?studentById(id):null;
+  const courseOpts=DB.courses.map(c=>`<option value="${c.id}" data-price="${c.defaultPrice}" ${s&&s.courseId===c.id?'selected':''}>${esc(c.name)} (${fmt(c.defaultPrice)})</option>`).join('');
+  modal(`${s?'Editează cursant':'Cursant nou'}`,`
+    <div class="field"><label>Nume complet *</label><input id="f_name" value="${esc(s?s.name:'')}" placeholder="ex. Andrei Popescu"></div>
+    <div class="field-row">
+      <div class="field"><label>Telefon</label><input id="f_phone" value="${esc(s?s.phone:'')}" placeholder="07xx xxx xxx"></div>
+      <div class="field"><label>Email</label><input id="f_email" value="${esc(s?s.email:'')}" placeholder="opțional"></div>
+    </div>
+    <div class="field"><label>Curs *</label><select id="f_course" onchange="syncCoursePrice()">${courseOpts}</select></div>
+    <div class="field-row">
+      <div class="field"><label>Preț total (${CURRENCY}) *</label><input id="f_price" type="number" min="0" value="${s?Number(s.price||0):''}"></div>
+      <div class="field"><label>Data începerii</label><input id="f_start" type="date" value="${s?(s.startDate||todayISO()):todayISO()}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Status</label><select id="f_status">${[['in_curs','În curs'],['finalizat','Finalizat'],['abandonat','Abandonat']].map(([k,l])=>`<option value="${k}" ${s&&s.status===k?'selected':(!s&&k==='in_curs'?'selected':'')}>${l}</option>`).join('')}</select></div>
+      <div class="field"><label>Instructor</label><input id="f_instr" value="${esc(s?s.instructor:'')}" placeholder="opțional"></div>
+    </div>
+    ${!s?`<div class="field"><label>Avans / plată inițială (${CURRENCY})</label><input id="f_initpay" type="number" min="0" value="0"><div class="hint">Se înregistrează automat ca încasare la data de azi.</div></div>`:''}
+    <div class="field"><label>Notițe</label><textarea id="f_notes" placeholder="observații, preferințe orar, etc.">${esc(s?s.notes:'')}</textarea></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveStudent('${id||''}')">${s?'Salvează':'Adaugă cursant'}</button>`);
+  setTimeout(()=>$('#f_name')&&$('#f_name').focus(),50);
+}
+function syncCoursePrice(){
+  const sel=$('#f_course'); const opt=sel.options[sel.selectedIndex];
+  const p=$('#f_price'); if(p&&!p.value) p.value=opt.dataset.price||'';
+}
+function saveStudent(id){
+  const name=$('#f_name').value.trim();
+  if(!name){toast('Numele este obligatoriu','err');return;}
+  const courseId=$('#f_course').value;
+  const data={
+    name, phone:$('#f_phone').value.trim(), email:$('#f_email').value.trim(),
+    courseId, price:Number($('#f_price').value||0), startDate:$('#f_start').value||todayISO(),
+    status:$('#f_status').value, instructor:$('#f_instr').value.trim(), notes:$('#f_notes').value.trim(),
+  };
+  if(id){ Object.assign(studentById(id),data); toast('Cursant actualizat','ok'); }
+  else{
+    data.id=uid(); data.createdAt=Date.now(); DB.students.push(data);
+    const init=Number($('#f_initpay').value||0);
+    if(init>0) DB.payments.push({id:uid(),studentId:data.id,amount:init,date:todayISO(),method:'Numerar',note:'Avans la înscriere',createdAt:Date.now()});
+    toast('Cursant adăugat','ok');
+  }
+  save(); closeModal(); render();
+}
+function delStudent(id){
+  const s=studentById(id); if(!s)return;
+  confirmModal(`Ștergi cursantul „${esc(s.name)}”?`,'Se vor șterge și încasările asociate. Acțiunea nu poate fi anulată.',()=>{
+    DB.students=DB.students.filter(x=>x.id!==id);
+    DB.payments=DB.payments.filter(p=>p.studentId!==id);
+    save(); render(); toast('Cursant șters','ok');
+  });
+}
+
+/* ---------- PAYMENTS ---------- */
+function openPaymentModal(studentId){
+  const s=studentById(studentId);
+  const bal=s?Number(s.price||0)-paidFor(s.id):0;
+  const studentOpts=DB.students.map(x=>`<option value="${x.id}" ${x.id===studentId?'selected':''}>${esc(x.name)}</option>`).join('');
+  modal('Înregistrează încasare',`
+    <div class="field"><label>Cursant *</label><select id="p_student">${studentOpts||'<option value="">— niciun cursant —</option>'}</select></div>
+    ${s&&bal>0?`<div class="hint" style="margin:-6px 0 12px;color:var(--warning)">Rest de plată: <b>${fmt(bal)}</b></div>`:''}
+    <div class="field-row">
+      <div class="field"><label>Sumă (${CURRENCY}) *</label><input id="p_amount" type="number" min="0" value="${bal>0?bal:''}" placeholder="0"></div>
+      <div class="field"><label>Data *</label><input id="p_date" type="date" value="${todayISO()}"></div>
+    </div>
+    <div class="field"><label>Metodă</label><select id="p_method">${PAY_METHODS.map(m=>`<option>${m}</option>`).join('')}</select></div>
+    <div class="field"><label>Notă</label><input id="p_note" placeholder="ex. rata 2 din 3"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="savePayment()">Salvează încasarea</button>`);
+}
+function savePayment(){
+  const studentId=$('#p_student').value; const amount=Number($('#p_amount').value||0);
+  if(!studentId){toast('Selectează un cursant','err');return;}
+  if(amount<=0){toast('Suma trebuie să fie mai mare ca 0','err');return;}
+  DB.payments.push({id:uid(),studentId,amount,date:$('#p_date').value||todayISO(),method:$('#p_method').value,note:$('#p_note').value.trim(),createdAt:Date.now()});
+  save(); closeModal(); render(); toast('Încasare înregistrată','ok');
+}
+function viewPayments(){
+  const list=DB.payments.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+  const total=list.reduce((a,p)=>a+Number(p.amount||0),0);
+  return `
+  <div class="toolbar">
+    <div class="card kpi green" style="padding:12px 18px;flex:1;min-width:180px"><div class="label">Total încasări (istoric)</div><div class="value" style="font-size:22px">${fmt(total)}</div></div>
+    <button class="btn btn-primary" onclick="openPaymentModal()" ${DB.students.length?'':'disabled style=opacity:.5'}>＋ Încasare</button>
+  </div>
+  ${!list.length?`<div class="card empty"><div class="big">💰</div>Nicio încasare înregistrată.</div>`:`
+  <div class="table-wrap"><table>
+    <thead><tr><th>Data</th><th>Cursant</th><th>Curs</th><th>Metodă</th><th>Notă</th><th class="num">Sumă</th><th></th></tr></thead>
+    <tbody>${list.map(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;return `<tr>
+      <td>${esc(p.date)}</td>
+      <td><b>${esc(s?s.name:'(șters)')}</b></td>
+      <td>${c?`<span class="badge b-gold">${esc(c.name)}</span>`:'—'}</td>
+      <td>${esc(p.method||'—')}</td>
+      <td><small style="color:var(--muted)">${esc(p.note||'')}</small></td>
+      <td class="num" style="color:var(--success);font-weight:700">${fmt(p.amount)}</td>
+      <td><div class="row-actions"><button class="icon-btn danger" title="Șterge" onclick="delPayment('${p.id}')">🗑️</button></div></td>
+    </tr>`}).join('')}</tbody>
+  </table></div>`}`;
+}
+function delPayment(id){
+  confirmModal('Ștergi această încasare?','',()=>{DB.payments=DB.payments.filter(p=>p.id!==id);save();render();toast('Încasare ștearsă','ok');});
+}
+
+/* ---------- EXPENSES ---------- */
+function openExpenseModal(id){
+  const e=id?DB.expenses.find(x=>x.id===id):null;
+  modal(`${e?'Editează cheltuială':'Cheltuială nouă'}`,`
+    <div class="field"><label>Categorie *</label><select id="e_cat">${EXPENSE_CATS.map(c=>`<option ${e&&e.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    <div class="field-row">
+      <div class="field"><label>Sumă (${CURRENCY}) *</label><input id="e_amount" type="number" min="0" value="${e?Number(e.amount||0):''}"></div>
+      <div class="field"><label>Data *</label><input id="e_date" type="date" value="${e?e.date:todayISO()}"></div>
+    </div>
+    <div class="field"><label>Descriere</label><input id="e_desc" value="${esc(e?e.description:'')}" placeholder="ex. chirie spațiu iunie"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveExpense('${id||''}')">${e?'Salvează':'Adaugă'}</button>`);
+}
+function saveExpense(id){
+  const amount=Number($('#e_amount').value||0);
+  if(amount<=0){toast('Suma trebuie să fie mai mare ca 0','err');return;}
+  const data={category:$('#e_cat').value,amount,date:$('#e_date').value||todayISO(),description:$('#e_desc').value.trim()};
+  if(id) Object.assign(DB.expenses.find(x=>x.id===id),data);
+  else{data.id=uid();data.createdAt=Date.now();DB.expenses.push(data);}
+  save(); closeModal(); render(); toast(id?'Cheltuială actualizată':'Cheltuială adăugată','ok');
+}
+function viewExpenses(){
+  const list=DB.expenses.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const total=list.reduce((a,e)=>a+Number(e.amount||0),0);
+  const byCat={}; list.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0));
+  const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  return `
+  <div class="toolbar">
+    <div class="card kpi red" style="padding:12px 18px;flex:1;min-width:180px"><div class="label">Total cheltuieli (istoric)</div><div class="value" style="font-size:22px">${fmt(total)}</div></div>
+    <button class="btn btn-primary" onclick="openExpenseModal()">＋ Cheltuială</button>
+  </div>
+  ${cats.length?`<div class="grid kpis" style="margin-bottom:18px">${cats.slice(0,4).map(([c,v])=>`<div class="card kpi"><div class="label">${esc(c)}</div><div class="value" style="font-size:20px;color:var(--text)">${fmt(v)}</div></div>`).join('')}</div>`:''}
+  ${!list.length?`<div class="card empty"><div class="big">🧾</div>Nicio cheltuială înregistrată.</div>`:`
+  <div class="table-wrap"><table>
+    <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Sumă</th><th></th></tr></thead>
+    <tbody>${list.map(e=>`<tr>
+      <td>${esc(e.date)}</td>
+      <td><span class="badge b-red">${esc(e.category)}</span></td>
+      <td><small style="color:var(--muted)">${esc(e.description||'')}</small></td>
+      <td class="num" style="color:var(--danger);font-weight:700">${fmt(e.amount)}</td>
+      <td><div class="row-actions"><button class="icon-btn" onclick="openExpenseModal('${e.id}')">✏️</button><button class="icon-btn danger" onclick="delExpense('${e.id}')">🗑️</button></div></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`}`;
+}
+function delExpense(id){ confirmModal('Ștergi această cheltuială?','',()=>{DB.expenses=DB.expenses.filter(e=>e.id!==id);save();render();toast('Cheltuială ștearsă','ok');}); }
+
+/* ---------- REPORTS ---------- */
+function viewReports(){
+  const [f,t]=periodRange();
+  const a=aggregate(f,t);
+  const margin=a.income>0?Math.round(a.profit/a.income*100):0;
+  // expense breakdown
+  const byCat={}; DB.expenses.filter(e=>inRange(e.date,f,t)).forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0));
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  // income by course
+  const byCourse={}; DB.payments.filter(p=>inRange(p.date,f,t)).forEach(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;const k=c?c.name:'Altele';byCourse[k]=(byCourse[k]||0)+Number(p.amount||0);});
+  const courseRows=Object.entries(byCourse).sort((a,b)=>b[1]-a[1]);
+  // monthly table for year mode
+  const year=PERIOD.mode==='year'?PERIOD.year:(PERIOD.mode==='month'?PERIOD.year:now.getFullYear());
+  const {inc,exp}=monthlySeries(year);
+
+  return `
+  <div class="toolbar no-print">
+    <div style="flex:1;color:var(--muted);font-size:13.5px">Perioadă analizată: <b style="color:var(--text)">${periodLabel()}</b></div>
+    <button class="btn btn-ghost" onclick="window.print()">🖨️ Printează / PDF</button>
+    <button class="btn btn-ghost" onclick="exportCSV()">⬇️ Export CSV</button>
+  </div>
+
+  <div class="grid kpis">
+    <div class="card kpi green"><div class="label">Venituri totale</div><div class="value">${fmt(a.income)}</div></div>
+    <div class="card kpi red"><div class="label">Cheltuieli totale</div><div class="value">${fmt(a.expense)}</div></div>
+    <div class="card kpi ${a.profit>=0?'gold':'red'}"><div class="label">Profit net</div><div class="value">${fmt(a.profit)}</div><div class="sub">Marjă de profit ${margin}%</div></div>
+    <div class="card kpi blue"><div class="label">Cursanți noi</div><div class="value">${a.newStudents}</div></div>
+  </div>
+
+  <div class="grid row2" style="margin-top:6px">
+    <div class="card">
+      <div class="section-title" style="margin-top:0">💰 Venituri pe tip de curs</div>
+      ${courseRows.length?`<div class="table-wrap" style="border:none"><table style="min-width:auto"><tbody>
+        ${courseRows.map(([n,v])=>`<tr><td>${esc(n)}</td><td class="num"><b style="color:var(--success)">${fmt(v)}</b></td><td class="num" style="color:var(--muted)">${a.income?Math.round(v/a.income*100):0}%</td></tr>`).join('')}
+        <tr style="border-top:2px solid var(--border)"><td><b>Total</b></td><td class="num"><b>${fmt(a.income)}</b></td><td></td></tr>
+      </tbody></table></div>`:'<div class="empty">—</div>'}
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-top:0">🧾 Cheltuieli pe categorii</div>
+      ${catRows.length?`<div class="table-wrap" style="border:none"><table style="min-width:auto"><tbody>
+        ${catRows.map(([n,v])=>`<tr><td>${esc(n)}</td><td class="num"><b style="color:var(--danger)">${fmt(v)}</b></td><td class="num" style="color:var(--muted)">${a.expense?Math.round(v/a.expense*100):0}%</td></tr>`).join('')}
+        <tr style="border-top:2px solid var(--border)"><td><b>Total</b></td><td class="num"><b>${fmt(a.expense)}</b></td><td></td></tr>
+      </tbody></table></div>`:'<div class="empty">—</div>'}
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="section-title" style="margin-top:0">📅 Defalcare lunară · ${year}</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Luna</th><th class="num">Venituri</th><th class="num">Cheltuieli</th><th class="num">Profit</th><th class="num">Marjă</th></tr></thead>
+      <tbody>${MONTHS_FULL.map((m,i)=>{const pr=inc[i]-exp[i];const mg=inc[i]>0?Math.round(pr/inc[i]*100):0;return `<tr>
+        <td>${m}</td><td class="num">${fmt(inc[i])}</td><td class="num">${fmt(exp[i])}</td>
+        <td class="num" style="color:${pr>=0?'var(--success)':'var(--danger)'};font-weight:700">${fmt(pr)}</td>
+        <td class="num" style="color:var(--muted)">${mg}%</td></tr>`}).join('')}
+        <tr style="border-top:2px solid var(--border)"><td><b>TOTAL ${year}</b></td>
+        <td class="num"><b>${fmt(inc.reduce((a,b)=>a+b,0))}</b></td>
+        <td class="num"><b>${fmt(exp.reduce((a,b)=>a+b,0))}</b></td>
+        <td class="num"><b style="color:var(--primary)">${fmt(inc.reduce((a,b)=>a+b,0)-exp.reduce((a,b)=>a+b,0))}</b></td><td></td></tr>
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+/* ---------- COURSES ---------- */
+function viewCourses(){
+  return `
+  <div class="toolbar"><div style="flex:1;color:var(--muted);font-size:13.5px">Tipuri de cursuri și prețuri standard. Folosite la adăugarea cursanților.</div>
+  <button class="btn btn-primary" onclick="openCourseModal()">＋ Tip de curs</button></div>
+  <div class="grid kpis" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
+    ${DB.courses.map(c=>{const cnt=DB.students.filter(s=>s.courseId===c.id).length;return `
+      <div class="card" style="border-left:4px solid ${c.color}">
+        <div style="display:flex;justify-content:space-between;align-items:start">
+          <div><div style="font-weight:700;font-size:15px">${esc(c.name)}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(c.type)}</div></div>
+          <div class="row-actions"><button class="icon-btn" onclick="openCourseModal('${c.id}')">✏️</button><button class="icon-btn danger" onclick="delCourse('${c.id}')">🗑️</button></div>
+        </div>
+        <div style="font-size:22px;font-weight:800;color:${c.color};margin-top:12px">${fmt(c.defaultPrice)}</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:4px">🎓 ${cnt} cursant${cnt===1?'':'i'}</div>
+      </div>`}).join('')}
+  </div>`;
+}
+function openCourseModal(id){
+  const c=id?courseById(id):null;
+  const types=['Individual','Grup','Masterclass','Perfecționare','Altele'];
+  modal(`${c?'Editează curs':'Tip de curs nou'}`,`
+    <div class="field"><label>Denumire *</label><input id="c_name" value="${esc(c?c.name:'')}" placeholder="ex. Barber de la zero"></div>
+    <div class="field-row">
+      <div class="field"><label>Categorie</label><select id="c_type">${types.map(t=>`<option ${c&&c.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Preț standard (${CURRENCY}) *</label><input id="c_price" type="number" min="0" value="${c?c.defaultPrice:''}"></div>
+    </div>
+    <div class="field"><label>Culoare</label><input id="c_color" type="color" value="${c?c.color:'#E8273A'}" style="height:44px;padding:4px"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveCourse('${id||''}')">${c?'Salvează':'Adaugă'}</button>`);
+}
+function saveCourse(id){
+  const name=$('#c_name').value.trim(); if(!name){toast('Denumirea e obligatorie','err');return;}
+  const data={name,type:$('#c_type').value,defaultPrice:Number($('#c_price').value||0),color:$('#c_color').value};
+  if(id) Object.assign(courseById(id),data);
+  else{data.id=uid();DB.courses.push(data);}
+  save(); closeModal(); render(); toast(id?'Curs actualizat':'Curs adăugat','ok');
+}
+function delCourse(id){
+  const cnt=DB.students.filter(s=>s.courseId===id).length;
+  if(cnt>0){toast(`Nu poți șterge: ${cnt} cursanți folosesc acest curs`,'err');return;}
+  confirmModal('Ștergi acest tip de curs?','',()=>{DB.courses=DB.courses.filter(c=>c.id!==id);save();render();toast('Curs șters','ok');});
+}
+
+/* ---------- SETTINGS ---------- */
+function viewSettings(){
+  const sz=(new Blob([localStorage.getItem(KEY)||'']).size/1024).toFixed(1);
+  return `
+  <div class="grid row2">
+    <div class="card">
+      <div class="section-title" style="margin-top:0">💾 Backup & restaurare</div>
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Datele sunt salvate <b>local pe acest dispozitiv</b>. Fă backup regulat și păstrează fișierul în siguranță (Drive, email).</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="exportJSON()">⬇️ Descarcă backup (.json)</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">⬆️ Importă backup</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+        <button class="btn btn-ghost" onclick="exportCSV()">📑 Export rapoarte CSV</button>
+      </div>
+      <div class="hint" style="margin-top:12px">Dimensiune date: ${sz} KB · ${DB.students.length} cursanți · ${DB.payments.length} încasări · ${DB.expenses.length} cheltuieli</div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-top:0">🧪 Date demonstrative</div>
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Încarcă date de test ca să vezi cum arată CRM-ul completat. Poți reseta oricând.</p>
+      <button class="btn btn-ghost" onclick="loadDemo()">✨ Încarcă date demo</button>
+      <div class="section-title" style="margin-top:22px;color:var(--danger)">⚠️ Zonă periculoasă</div>
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Șterge definitiv toate datele de pe acest dispozitiv.</p>
+      <button class="btn btn-danger" onclick="resetAll()">🗑️ Șterge toate datele</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
+    <p style="color:var(--muted);font-size:13.5px">
+      <b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și finanțe pentru academia de barbering.<br>
+      Funcționează în orice browser (desktop & mobil), fără internet și fără cont. Toate datele rămân la tine.
+    </p>
+  </div>`;
+}
+
+/* ============================================================
+   EXPORT / IMPORT
+   ============================================================ */
+function download(name,content,type){
+  const b=new Blob([content],{type}); const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u);
+}
+function exportJSON(){ download(`select-academy-backup-${todayISO()}.json`,JSON.stringify(DB,null,2),'application/json'); toast('Backup descărcat','ok'); }
+function importJSON(ev){
+  const file=ev.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result);
+    if(!d.students||!d.courses) throw 0;
+    confirmModal('Importă backup?','Datele curente vor fi înlocuite cu cele din fișier.',()=>{ DB=d; save(); render(); toast('Backup importat','ok'); });
+  }catch(e){ toast('Fișier invalid','err'); } };
+  r.readAsText(file); ev.target.value='';
+}
+function exportCSV(){
+  const [f,t]=periodRange();
+  let csv='SELECT ACADEMY - Raport '+periodLabel()+'\n\n';
+  csv+='INCASARI\nData,Cursant,Curs,Metoda,Suma\n';
+  DB.payments.filter(p=>inRange(p.date,f,t)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;csv+=`${p.date},"${(s?s.name:'').replace(/"/g,'')}","${c?c.name:''}",${p.method||''},${p.amount}\n`;});
+  csv+='\nCHELTUIELI\nData,Categorie,Descriere,Suma\n';
+  DB.expenses.filter(e=>inRange(e.date,f,t)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{csv+=`${e.date},"${e.category}","${(e.description||'').replace(/"/g,'')}",${e.amount}\n`;});
+  const a=aggregate(f,t);
+  csv+=`\nSUMAR\nVenituri,${a.income}\nCheltuieli,${a.expense}\nProfit,${a.profit}\nCursanti noi,${a.newStudents}\n`;
+  download(`select-academy-raport-${todayISO()}.csv`,'﻿'+csv,'text/csv;charset=utf-8'); toast('CSV exportat','ok');
+}
+function resetAll(){
+  confirmModal('Ștergi TOATE datele?','Această acțiune este ireversibilă. Recomandăm un backup înainte.',()=>{
+    DB=blankDB(); save(); render(); toast('Toate datele au fost șterse','ok');
+  });
+}
+function loadDemo(){
+  confirmModal('Încarci date demo?','Datele curente vor fi înlocuite.',()=>{
+    DB=blankDB();
+    const names=['Andrei Popescu','Mihai Ionescu','Cristian Dumitru','Ștefan Radu','Vlad Marin','Alex Georgescu','Robert Stan','Darius Nicolae','Sergiu Toma','Paul Ene','Ionuț Barbu','Cătălin Vasile'];
+    const statuses=['in_curs','in_curs','in_curs','finalizat','finalizat','in_curs','finalizat','in_curs','abandonat','in_curs','finalizat','in_curs'];
+    const Y=now.getFullYear();
+    names.forEach((n,i)=>{
+      const c=DB.courses[i%DB.courses.length];
+      const month=i%6+1; const sd=`${Y}-${String(month).padStart(2,'0')}-${String((i%26)+1).padStart(2,'0')}`;
+      const id=uid();
+      DB.students.push({id,name:n,phone:'07'+(20000000+i*111111),email:'',courseId:c.id,price:c.defaultPrice,startDate:sd,status:statuses[i],instructor:i%2?'Daniel':'Sorin',notes:'',createdAt:Date.now()-i*86400000});
+      // payments: full for finalized, partial otherwise
+      const pay=statuses[i]==='finalizat'?c.defaultPrice:statuses[i]==='abandonat'?Math.round(c.defaultPrice*0.3):Math.round(c.defaultPrice*0.6);
+      DB.payments.push({id:uid(),studentId:id,amount:Math.round(pay*0.5),date:sd,method:'Numerar',note:'Avans',createdAt:Date.now()-i*86400000});
+      if(statuses[i]!=='abandonat') DB.payments.push({id:uid(),studentId:id,amount:pay-Math.round(pay*0.5),date:`${Y}-${String(month+1).padStart(2,'0')}-10`,method:'Card',note:'Rată',createdAt:Date.now()-i*80000000});
+    });
+    const exCats=[['Chirie',2500],['Materiale & consumabile',1800],['Salarii & colaboratori',4000],['Marketing & publicitate',1200],['Utilități',600],['Echipamente',2200]];
+    for(let m=1;m<=6;m++) exCats.forEach(([cat,amt])=>{ if(Math.random()>.2) DB.expenses.push({id:uid(),category:cat,amount:amt+Math.round((Math.random()-.5)*400),date:`${Y}-${String(m).padStart(2,'0')}-05`,description:cat+' luna '+MONTHS_FULL[m-1],createdAt:Date.now()}); });
+    save(); render(); toast('Date demo încărcate','ok');
+  });
+}
+
+/* ============================================================
+   MODAL primitives
+   ============================================================ */
+function modal(title,body,foot){
+  $('#modal').innerHTML=`
+    <div class="modal-head"><h3>${title}</h3><button class="icon-btn" onclick="closeModal()" style="font-size:20px">✕</button></div>
+    <div class="modal-body">${body}</div>
+    <div class="modal-foot">${foot||''}</div>`;
+  $('#overlay').classList.add('open');
+}
+function closeModal(){ $('#overlay').classList.remove('open'); }
+let _confirmCb=null;
+function confirmModal(title,msg,cb){
+  _confirmCb=cb;
+  modal(title,`<p style="color:var(--muted);font-size:14px">${esc(msg||'')}</p>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-danger" onclick="runConfirm()">Confirmă</button>`);
+}
+function runConfirm(){ closeModal(); if(_confirmCb)_confirmCb(); _confirmCb=null; }
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ============================================================
+   INIT
+   ============================================================ */
+buildNav(); renderStamp(); render();
+</script>
+</body>
+</html>

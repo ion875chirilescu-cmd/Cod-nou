@@ -238,6 +238,46 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
   .kpi .ic{display:none}
 }
 
+/* ===== Mobil: tabele-listă devin carduri verticale ===== */
+@media(max-width:760px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .cards-mobile{border:none;background:transparent;overflow:visible;border-radius:0}
+  .cards-mobile table{min-width:0;display:block}
+  .cards-mobile thead{display:none}
+  .cards-mobile tbody{display:block}
+  .cards-mobile tbody tr{display:block;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:10px;padding:2px 14px}
+  .cards-mobile tbody tr:hover{background:var(--surface)}
+  .cards-mobile td{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px solid var(--border);white-space:normal;padding:11px 0;text-align:right;font-size:14px}
+  .cards-mobile td:last-child{border-bottom:none}
+  .cards-mobile td::before{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:left;white-space:nowrap;flex-shrink:0}
+  .cards-mobile .row-actions{justify-content:flex-end;width:100%;gap:10px}
+  .cards-mobile .icon-btn{width:40px;height:40px;font-size:17px;background:var(--surface-alt)}
+  .cards-mobile .pbar{max-width:130px}
+  .cards-mobile .btn-sm{padding:9px 14px;font-size:13.5px}
+  .t-students td:nth-of-type(1)::before{content:"Cursant"}
+  .t-students td:nth-of-type(2)::before{content:"Curs"}
+  .t-students td:nth-of-type(3)::before{content:"Început"}
+  .t-students td:nth-of-type(4)::before{content:"Status"}
+  .t-students td:nth-of-type(5)::before{content:"Preț"}
+  .t-students td:nth-of-type(6)::before{content:"Achitat"}
+  .t-students td:nth-of-type(7)::before{content:"Progres plată"}
+  .t-payments td:nth-of-type(1)::before{content:"Data"}
+  .t-payments td:nth-of-type(2)::before{content:"Cursant"}
+  .t-payments td:nth-of-type(3)::before{content:"Curs"}
+  .t-payments td:nth-of-type(4)::before{content:"Metodă"}
+  .t-payments td:nth-of-type(5)::before{content:"Notă"}
+  .t-payments td:nth-of-type(6)::before{content:"Sumă"}
+  .t-expenses td:nth-of-type(1)::before{content:"Data"}
+  .t-expenses td:nth-of-type(2)::before{content:"Categorie"}
+  .t-expenses td:nth-of-type(3)::before{content:"Descriere"}
+  .t-expenses td:nth-of-type(4)::before{content:"Sumă"}
+  .t-instructors td:nth-of-type(1)::before{content:"Profesor"}
+  .t-instructors td:nth-of-type(2)::before{content:"Procent"}
+  .t-instructors td:nth-of-type(3)::before{content:"Încasări"}
+  .t-instructors td:nth-of-type(4)::before{content:"Salariu"}
+  .t-instructors td:nth-of-type(5)::before{content:"Plată"}
+}
+
 /* print (rapoarte) */
 @media print{
   .sidebar,.topbar,.mobile-nav,.toolbar,.no-print{display:none!important}
@@ -258,7 +298,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     <div class="nav-footer">
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v1.3 · profesori & salarii</div>
+      <div style="margin-top:4px">v1.4 · optimizat mobil</div>
     </div>
   </aside>
 
@@ -598,7 +638,7 @@ function viewStudents(){
 function rerenderStudents(){ $('#studentsTable')&&($('#view').innerHTML=viewStudents(),markActive()); }
 function studentsTable(list){
   if(!list.length) return `<div class="card empty"><div class="big">🎓</div>Niciun cursant ${studentFilter!=='all'||studentSearch?'pentru filtrul curent':'încă'}.<br>${!studentSearch&&studentFilter==='all'?'<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openStudentModal()">＋ Adaugă primul cursant</button>':''}</div>`;
-  return `<div class="table-wrap"><table>
+  return `<div class="table-wrap cards-mobile t-students"><table>
     <thead><tr><th>Cursant</th><th>Curs</th><th>Început</th><th>Status</th><th class="num">Preț</th><th class="num">Achitat</th><th style="min-width:120px">Progres plată</th><th></th></tr></thead>
     <tbody>${list.map(s=>{
       const c=courseById(s.courseId)||{}; const paid=paidFor(s.id); const price=Number(s.price||0);
@@ -726,7 +766,7 @@ function viewPayments(){
     <button class="btn btn-primary" onclick="openPaymentModal()" ${DB.students.length?'':'disabled style=opacity:.5'}>＋ Încasare</button>
   </div>
   ${!list.length?`<div class="card empty"><div class="big">💰</div>Nicio încasare înregistrată.</div>`:`
-  <div class="table-wrap"><table>
+  <div class="table-wrap cards-mobile t-payments"><table>
     <thead><tr><th>Data</th><th>Cursant</th><th>Curs</th><th>Metodă</th><th>Notă</th><th class="num">Sumă</th><th></th></tr></thead>
     <tbody>${list.map(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;return `<tr>
       <td>${esc(p.date)}</td>
@@ -775,7 +815,7 @@ function viewExpenses(){
   </div>
   ${cats.length?`<div class="grid kpis" style="margin-bottom:18px">${cats.slice(0,4).map(([c,v])=>`<div class="card kpi"><div class="label">${esc(c)}</div><div class="value" style="font-size:20px;color:var(--text)">${fmt(v)}</div></div>`).join('')}</div>`:''}
   ${!list.length?`<div class="card empty"><div class="big">🧾</div>Nicio cheltuială înregistrată.</div>`:`
-  <div class="table-wrap"><table>
+  <div class="table-wrap cards-mobile t-expenses"><table>
     <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Sumă</th><th></th></tr></thead>
     <tbody>${list.map(e=>`<tr>
       <td>${esc(e.date)}</td>
@@ -876,7 +916,7 @@ function viewInstructors(){
   <div class="card" style="margin-bottom:14px">
     <div style="color:var(--muted);font-size:13px">Salariul = <b>procent × încasările aduse de cursanții profesorului</b> în luna selectată (<b>${MONTHS_FULL[salPeriod.month]} ${salPeriod.year}</b>). Apasă „💸 Plătește" ca să-l treci automat la Cheltuieli pe luna respectivă.</div>
   </div>
-  <div class="table-wrap"><table>
+  <div class="table-wrap cards-mobile t-instructors"><table>
     <thead><tr><th>Profesor</th><th class="num">Procent</th><th class="num">Încasări lună</th><th class="num">Salariu</th><th>Plată</th><th></th></tr></thead>
     <tbody>${rows}
       <tr style="border-top:2px solid var(--border)"><td><b>TOTAL</b></td><td></td><td></td><td class="num"><b>${fmt(totalSal)}</b></td><td><small style="color:var(--muted)">plătit: ${fmt(totalPaid)}</small></td><td></td></tr>

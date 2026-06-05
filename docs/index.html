@@ -302,6 +302,24 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
   .t-instructors td:nth-of-type(5)::before{content:"Plată"}
 }
 
+/* ===== Mobil: dashboard pe toată lățimea ===== */
+@media(max-width:760px){
+  .content{padding:14px 11px 100px}
+  .hero{margin-bottom:14px}
+  .hero-profit{flex:1; text-align:left}
+  /* graficul umple ecranul, fără derulare laterală */
+  .chart-wrap{overflow-x:visible}
+  .bars{min-width:0; gap:4px; height:180px}
+  .bar-col{min-width:0; gap:5px}
+  .bar-col .lbl{font-size:9px}
+  .bar-stack{gap:2px}
+  .bar{width:9px}
+  /* donut centrat, legenda pe toată lățimea */
+  .donut-wrap{flex-direction:column; align-items:center; gap:14px}
+  .donut-legend{width:100%; min-width:0; font-size:14px}
+  .donut-legend .li{padding:9px 0}
+}
+
 /* print (rapoarte) */
 @media print{
   .sidebar,.topbar,.mobile-nav,.toolbar,.no-print{display:none!important}
@@ -322,7 +340,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     <div class="nav-footer">
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v1.5 · interfață reînnoită</div>
+      <div style="margin-top:4px">v1.6 · dashboard pe tot ecranul</div>
     </div>
   </aside>
 

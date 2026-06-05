@@ -634,7 +634,7 @@ function openStudentModal(id){
       <div class="field"><label>Status</label><select id="f_status">${[['in_curs','În curs'],['finalizat','Finalizat'],['abandonat','Abandonat']].map(([k,l])=>`<option value="${k}" ${s&&s.status===k?'selected':(!s&&k==='in_curs'?'selected':'')}>${l}</option>`).join('')}</select></div>
       <div class="field"><label>Instructor</label><input id="f_instr" value="${esc(s?s.instructor:'')}" placeholder="opțional"></div>
     </div>
-    ${!s?`<div class="field"><label>Avans / plată inițială (${CURRENCY})</label><input id="f_initpay" type="number" min="0" value="0"><div class="hint">Se înregistrează automat ca încasare la data de azi.</div></div>`:''}
+    ${!s?`<div class="field"><label>Avans / plată inițială (${CURRENCY})</label><input id="f_initpay" type="number" min="0" value="0"><div class="hint">Se înregistrează automat ca încasare la <b>data începerii</b>.</div></div>`:''}
     <div class="field"><label>Notițe</label><textarea id="f_notes" placeholder="observații, preferințe orar, etc.">${esc(s?s.notes:'')}</textarea></div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveStudent('${id||''}')">${s?'Salvează':'Adaugă cursant'}</button>`);
   setTimeout(()=>$('#f_name')&&$('#f_name').focus(),50);
@@ -656,7 +656,7 @@ function saveStudent(id){
   else{
     data.id=uid(); data.createdAt=Date.now(); DB.students.push(data);
     const init=Number($('#f_initpay').value||0);
-    if(init>0) DB.payments.push({id:uid(),studentId:data.id,amount:init,date:todayISO(),method:'Numerar',note:'Avans la înscriere',createdAt:Date.now()});
+    if(init>0) DB.payments.push({id:uid(),studentId:data.id,amount:init,date:data.startDate,method:'Numerar',note:'Avans la înscriere',createdAt:Date.now()});
     toast('Cursant adăugat','ok');
   }
   save(); closeModal(); render();
@@ -671,25 +671,32 @@ function delStudent(id){
 }
 
 /* ---------- PAYMENTS ---------- */
-function openPaymentModal(studentId){
+function openPaymentModal(studentId,payId){
+  const pay=payId?DB.payments.find(p=>p.id===payId):null;
+  if(pay) studentId=pay.studentId;
   const s=studentById(studentId);
   const bal=s?Number(s.price||0)-paidFor(s.id):0;
   const studentOpts=DB.students.map(x=>`<option value="${x.id}" ${x.id===studentId?'selected':''}>${esc(x.name)}</option>`).join('');
-  modal('Înregistrează încasare',`
+  modal(pay?'Editează încasare':'Înregistrează încasare',`
     <div class="field"><label>Cursant *</label><select id="p_student">${studentOpts||'<option value="">— niciun cursant —</option>'}</select></div>
-    ${s&&bal>0?`<div class="hint" style="margin:-6px 0 12px;color:var(--warning)">Rest de plată: <b>${fmt(bal)}</b></div>`:''}
+    ${s&&bal>0&&!pay?`<div class="hint" style="margin:-6px 0 12px;color:var(--warning)">Rest de plată: <b>${fmt(bal)}</b></div>`:''}
     <div class="field-row">
-      <div class="field"><label>Sumă (${CURRENCY}) *</label><input id="p_amount" type="number" min="0" value="${bal>0?bal:''}" placeholder="0"></div>
-      <div class="field"><label>Data *</label><input id="p_date" type="date" value="${todayISO()}"></div>
+      <div class="field"><label>Sumă (${CURRENCY}) *</label><input id="p_amount" type="number" min="0" value="${pay?Number(pay.amount||0):(bal>0?bal:'')}" placeholder="0"></div>
+      <div class="field"><label>Data *</label><input id="p_date" type="date" value="${pay?(pay.date||todayISO()):todayISO()}"></div>
     </div>
-    <div class="field"><label>Metodă</label><select id="p_method">${PAY_METHODS.map(m=>`<option>${m}</option>`).join('')}</select></div>
-    <div class="field"><label>Notă</label><input id="p_note" placeholder="ex. rata 2 din 3"></div>
-  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="savePayment()">Salvează încasarea</button>`);
+    <div class="field"><label>Metodă</label><select id="p_method">${PAY_METHODS.map(m=>`<option ${pay&&pay.method===m?'selected':''}>${m}</option>`).join('')}</select></div>
+    <div class="field"><label>Notă</label><input id="p_note" value="${pay?esc(pay.note||''):''}" placeholder="ex. rata 2 din 3"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="savePayment('${payId||''}')">${pay?'Salvează':'Salvează încasarea'}</button>`);
 }
-function savePayment(){
+function savePayment(payId){
   const studentId=$('#p_student').value; const amount=Number($('#p_amount').value||0);
   if(!studentId){toast('Selectează un cursant','err');return;}
   if(amount<=0){toast('Suma trebuie să fie mai mare ca 0','err');return;}
+  const pay=payId?DB.payments.find(p=>p.id===payId):null;
+  if(pay){
+    pay.studentId=studentId; pay.amount=amount; pay.date=$('#p_date').value||todayISO(); pay.method=$('#p_method').value; pay.note=$('#p_note').value.trim();
+    save(); closeModal(); render(); toast('Încasare actualizată','ok'); return;
+  }
   DB.payments.push({id:uid(),studentId,amount,date:$('#p_date').value||todayISO(),method:$('#p_method').value,note:$('#p_note').value.trim(),createdAt:Date.now()});
   save(); closeModal(); render(); toast('Încasare înregistrată','ok');
 }
@@ -711,7 +718,7 @@ function viewPayments(){
       <td>${esc(p.method||'—')}</td>
       <td><small style="color:var(--muted)">${esc(p.note||'')}</small></td>
       <td class="num" style="color:var(--success);font-weight:700">${fmt(p.amount)}</td>
-      <td><div class="row-actions"><button class="icon-btn danger" title="Șterge" onclick="delPayment('${p.id}')">🗑️</button></div></td>
+      <td><div class="row-actions"><button class="icon-btn" title="Editează" onclick="openPaymentModal(null,'${p.id}')">✏️</button><button class="icon-btn danger" title="Șterge" onclick="delPayment('${p.id}')">🗑️</button></div></td>
     </tr>`}).join('')}</tbody>
   </table></div>`}`;
 }

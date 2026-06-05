@@ -574,7 +574,7 @@ function rowAct(ic,title,sub,color){
 /* ---------- STUDENTS ---------- */
 let studentFilter='all', studentSearch='';
 function viewStudents(){
-  let list=DB.students.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  let list=DB.students.slice().sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||'')||(b.createdAt||0)-(a.createdAt||0));
   if(studentFilter!=='all') list=list.filter(s=>s.status===studentFilter);
   if(studentSearch){const q=studentSearch.toLowerCase();list=list.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.phone||'').includes(q)||((courseById(s.courseId)||{}).name||'').toLowerCase().includes(q));}
   const counts={all:DB.students.length,in_curs:0,finalizat:0,abandonat:0};

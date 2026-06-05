@@ -884,6 +884,7 @@ function viewSettings(){
         <button class="btn btn-ghost btn-sm" onclick="copyText('${esc(Sync.cfg.id)}')">📋 Copiază codul</button>
         <button class="btn btn-ghost btn-sm" onclick="Sync.pull()">🔄 Reîmprospătează</button>
         <button class="btn btn-ghost btn-sm" onclick="Sync.push()">⬆️ Trimite acum</button>
+        <button class="btn btn-ghost btn-sm" onclick="syncTest()">🔧 Testează conexiunea</button>
         <button class="btn btn-danger btn-sm" onclick="syncDisconnect()">Oprește pe acest dispozitiv</button>
       </div>
     `:`
@@ -891,6 +892,7 @@ function viewSettings(){
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="openSyncStart()">☁️ Pornește sincronizarea</button>
         <button class="btn btn-ghost" onclick="openSyncConnect()">🔗 Conectează la un cod</button>
+        <button class="btn btn-ghost" onclick="syncTest()">🔧 Testează conexiunea</button>
       </div>
       <div class="hint" style="margin-top:12px">Pornește pe <b>primul</b> dispozitiv → primești un cod → pe celelalte apeși „Conectează la un cod".</div>
     `}
@@ -1120,6 +1122,29 @@ async function doSyncConnect(){
   catch(e){ toast('Cod sau parolă greșite (ori fără internet)','err'); const g=$('#cy_go'); if(g){g.textContent='Conectează';g.disabled=false;} }
 }
 function syncDisconnect(){ confirmModal('Oprești sincronizarea pe acest dispozitiv?','Datele rămân salvate local aici. Celelalte dispozitive continuă sincronizarea.',()=>Sync.disconnect()); }
+async function syncTest(){
+  modal('🔧 Test sincronizare','<pre id="sytest" style="white-space:pre-wrap;font-size:13px;line-height:1.6;color:var(--text);margin:0">Se testează conexiunea cu serverul…</pre>','<button class="btn btn-primary" onclick="closeModal()">Închide</button>');
+  const log=[]; const upd=()=>{ const el=document.getElementById('sytest'); if(el) el.textContent=log.join('\n'); };
+  try{
+    log.push('⏳ Creez un spațiu de test pe server…'); upd();
+    const id=await _jbCreate({hello:'test',t:Date.now()});
+    log.push('✅ Server accesibil. Cod test: '+id); upd();
+    const got=await _jbGet(id);
+    log.push(got&&got.hello==='test'?'✅ Citire înapoi: OK':'⚠️ Citire: date neașteptate'); upd();
+    await _jbPut(id,{hello:'test2',t:Date.now()});
+    log.push('✅ Salvare (update): OK'); upd();
+    log.push(''); log.push('🎉 SINCRONIZAREA FUNCȚIONEAZĂ pe acest dispozitiv!');
+    if(Sync.on()) log.push('Sincronizare activă. Cod: '+Sync.cfg.id);
+    else log.push('Acum apasă „Pornește sincronizarea" ca să o activezi.');
+    upd();
+  }catch(e){
+    log.push(''); log.push('❌ EROARE: '+(e&&e.message?e.message:e)); log.push('');
+    log.push('Serverul de sincronizare NU e accesibil din acest browser');
+    log.push('(blocat de rețea sau de regulile de securitate ale browserului).');
+    log.push('Trimite-i această captură dezvoltatorului.');
+    upd();
+  }
+}
 
 /* ============================================================
    INIT

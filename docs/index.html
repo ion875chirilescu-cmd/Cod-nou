@@ -87,6 +87,30 @@ a{color:var(--primary); text-decoration:none}
 .kpi .ic{position:absolute; top:16px; right:18px; font-size:22px; opacity:.85}
 .kpi.green .value{color:var(--success)} .kpi.red .value{color:var(--danger)}
 .kpi.gold .value{color:var(--primary)} .kpi.blue .value{color:var(--info)}
+.kpi.green{background:linear-gradient(160deg,rgba(63,181,98,.12),var(--surface) 62%)}
+.kpi.red{background:linear-gradient(160deg,rgba(232,39,58,.12),var(--surface) 62%)}
+.kpi.gold{background:linear-gradient(160deg,rgba(232,39,58,.12),var(--surface) 62%)}
+.kpi.blue{background:linear-gradient(160deg,rgba(79,157,222,.12),var(--surface) 62%)}
+
+/* ---------- Hero + acțiuni rapide (dashboard) ---------- */
+.hero{display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:16px}
+.hero-hi{font-size:21px; font-weight:800; letter-spacing:-.3px}
+.hero-sub{color:var(--muted); font-size:13px; margin-top:2px}
+.hero-profit{text-align:right; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:9px 16px}
+.hero-profit span{display:block; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; font-weight:600}
+.hero-profit b{font-size:21px; color:var(--success)} .hero-profit.neg b{color:var(--danger)}
+.quick-actions{display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap}
+.quick-actions button{flex:1; min-width:74px; display:flex; flex-direction:column; align-items:center; gap:5px; padding:14px 8px; border-radius:var(--r-md); background:var(--surface); border:1px solid var(--border); color:var(--text); font-size:12.5px; font-weight:600; transition:.15s}
+.quick-actions button:hover{border-color:var(--primary); background:var(--surface-alt)}
+.quick-actions .qa-ic{font-size:23px; line-height:1}
+
+/* ---------- Buton plutitor (FAB) ---------- */
+.fab{position:fixed; right:18px; bottom:84px; z-index:60; width:56px; height:56px; border-radius:50%;
+  background:linear-gradient(145deg,var(--primary),var(--primary-dark)); color:#fff; font-size:30px; font-weight:300;
+  display:grid; place-items:center; box-shadow:0 8px 22px rgba(232,39,58,.45); transition:.15s}
+.fab:hover{filter:brightness(1.08); transform:translateY(-2px)}
+.fab.hide{display:none}
+@media(min-width:761px){ .fab{bottom:26px; right:26px} }
 
 .section-title{font-size:15px; font-weight:700; margin:24px 0 12px; display:flex; align-items:center; gap:8px}
 .row2{grid-template-columns:1.6fr 1fr}
@@ -145,8 +169,8 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
   display:inline-flex; align-items:center; gap:7px; padding:9px 15px; border-radius:var(--r-sm);
   font-weight:600; font-size:13.7px; transition:.15s; white-space:nowrap;
 }
-.btn-primary{background:var(--primary); color:#fff}
-.btn-primary:hover{background:var(--primary-dark)}
+.btn-primary{background:linear-gradient(145deg,var(--primary),var(--primary-dark)); color:#fff; box-shadow:0 4px 14px rgba(232,39,58,.28)}
+.btn-primary:hover{filter:brightness(1.07)}
 .btn-ghost{background:var(--surface-alt); color:var(--text); border:1px solid var(--border)}
 .btn-ghost:hover{background:var(--surface-3)}
 .btn-danger{background:rgba(224,85,85,.15); color:#f08a8a; border:1px solid rgba(224,85,85,.3)}
@@ -298,7 +322,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     <div class="nav-footer">
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v1.4 · optimizat mobil</div>
+      <div style="margin-top:4px">v1.5 · interfață reînnoită</div>
     </div>
   </aside>
 
@@ -315,6 +339,9 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
 
 <!-- Bottom nav (mobile) -->
 <nav class="mobile-nav" id="navMobile"></nav>
+
+<!-- Buton plutitor de adăugare rapidă -->
+<button class="fab" id="fab" onclick="quickAdd()" title="Adaugă">＋</button>
 
 <!-- Drawer (mobile full menu) -->
 <div class="overlay-nav" id="drawer" onclick="if(event.target===this)toggleDrawer(false)">
@@ -498,8 +525,18 @@ function render(){
   else if(route==='courses') v.innerHTML=viewCourses();
   else if(route==='settings') v.innerHTML=viewSettings();
   markActive();
+  const fabRoutes=['dashboard','students','payments','expenses','instructors','courses'];
+  const fab=$('#fab'); if(fab) fab.classList.toggle('hide', !fabRoutes.includes(route));
   if(route==='dashboard') drawDashboardChart();
 }
+function quickAdd(){
+  if(route==='payments') return openPaymentModal();
+  if(route==='expenses') return openExpenseModal();
+  if(route==='instructors') return openInstructorModal();
+  if(route==='courses') return openCourseModal();
+  return openStudentModal();
+}
+function greeting(){ const h=new Date().getHours(); return h<12?'Bună dimineața':h<18?'Bună ziua':'Bună seara'; }
 
 /* ---------- DASHBOARD ---------- */
 function viewDashboard(){
@@ -511,6 +548,19 @@ function viewDashboard(){
   const outstanding=Math.max(0,billed-DB.students.reduce((s,st)=>s+paidFor(st.id),0));
 
   return `
+  <div class="hero">
+    <div>
+      <div class="hero-hi">${greeting()} 👋</div>
+      <div class="hero-sub">${esc(DB.settings.academyName||'Select Academy')} · ${periodLabel()}</div>
+    </div>
+    <div class="hero-profit ${a.profit>=0?'':'neg'}"><span>Profit ${periodLabel()}</span><b>${fmt(a.profit)}</b></div>
+  </div>
+  <div class="quick-actions">
+    <button onclick="openStudentModal()"><span class="qa-ic">🎓</span>Cursant</button>
+    <button onclick="openPaymentModal()"><span class="qa-ic">💰</span>Încasare</button>
+    <button onclick="openExpenseModal()"><span class="qa-ic">🧾</span>Cheltuială</button>
+    <button onclick="go('instructors')"><span class="qa-ic">🧑‍🏫</span>Salarii</button>
+  </div>
   <div class="grid kpis">
     <div class="card kpi green"><span class="ic">💰</span><div class="label">Venituri</div><div class="value">${fmt(a.income)}</div><div class="sub">${periodLabel()}</div></div>
     <div class="card kpi red"><span class="ic">🧾</span><div class="label">Cheltuieli</div><div class="value">${fmt(a.expense)}</div><div class="sub">${periodLabel()}</div></div>

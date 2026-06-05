@@ -258,7 +258,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     <div class="nav-footer">
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v1.2 · sincronizare GitHub</div>
+      <div style="margin-top:4px">v1.3 · profesori & salarii</div>
     </div>
   </aside>
 
@@ -325,6 +325,9 @@ function load(){
     d.courses=d.courses||JSON.parse(JSON.stringify(DEFAULT_COURSES));
     d.students=d.students||[]; d.payments=d.payments||[]; d.expenses=d.expenses||[];
     d.settings=d.settings||{academyName:'Select Academy'};
+    d.instructors=d.instructors||[];
+    // creează automat profesori din numele deja folosite pe cursanți (o singură dată)
+    d.students.forEach(s=>{ const nm=(s.instructor||'').trim(); if(nm && !d.instructors.some(i=>(i.name||'').toLowerCase()===nm.toLowerCase())) d.instructors.push({id:uid(),name:nm,percent:50,phone:'',createdAt:Date.now()}); });
     return d;
   }catch(e){ return blankDB(); }
 }
@@ -393,6 +396,7 @@ const NAV=[
   {id:'payments',  label:'Încasări',       icon:'💰'},
   {id:'expenses',  label:'Cheltuieli',     icon:'🧾'},
   {id:'reports',   label:'Rapoarte',       icon:'📈'},
+  {id:'instructors',label:'Profesori',     icon:'🧑‍🏫'},
   {id:'courses',   label:'Cursuri',        icon:'✂️'},
   {id:'settings',  label:'Setări & backup',icon:'⚙️'},
 ];
@@ -450,6 +454,7 @@ function render(){
   else if(route==='payments') v.innerHTML=viewPayments();
   else if(route==='expenses') v.innerHTML=viewExpenses();
   else if(route==='reports') v.innerHTML=viewReports();
+  else if(route==='instructors') v.innerHTML=viewInstructors();
   else if(route==='courses') v.innerHTML=viewCourses();
   else if(route==='settings') v.innerHTML=viewSettings();
   markActive();
@@ -619,6 +624,10 @@ function studentsTable(list){
 function openStudentModal(id){
   const s=id?studentById(id):null;
   const courseOpts=DB.courses.map(c=>`<option value="${c.id}" data-price="${c.defaultPrice}" ${s&&s.courseId===c.id?'selected':''}>${esc(c.name)} (${fmt(c.defaultPrice)})</option>`).join('');
+  const curInstr=s?(s.instructor||''):'';
+  const instrNames=DB.instructors.map(i=>i.name);
+  if(curInstr&&!instrNames.some(n=>n.toLowerCase()===curInstr.toLowerCase())) instrNames.push(curInstr);
+  const instrOpts=`<option value="">— niciunul —</option>`+instrNames.map(n=>`<option ${curInstr&&curInstr.toLowerCase()===n.toLowerCase()?'selected':''}>${esc(n)}</option>`).join('');
   modal(`${s?'Editează cursant':'Cursant nou'}`,`
     <div class="field"><label>Nume complet *</label><input id="f_name" value="${esc(s?s.name:'')}" placeholder="ex. Andrei Popescu"></div>
     <div class="field-row">
@@ -632,7 +641,7 @@ function openStudentModal(id){
     </div>
     <div class="field-row">
       <div class="field"><label>Status</label><select id="f_status">${[['in_curs','În curs'],['finalizat','Finalizat'],['abandonat','Abandonat']].map(([k,l])=>`<option value="${k}" ${s&&s.status===k?'selected':(!s&&k==='in_curs'?'selected':'')}>${l}</option>`).join('')}</select></div>
-      <div class="field"><label>Instructor</label><input id="f_instr" value="${esc(s?s.instructor:'')}" placeholder="opțional"></div>
+      <div class="field"><label>Profesor</label><select id="f_instr">${instrOpts}</select><div class="hint" style="margin-top:4px">Adaugi profesori în pagina „Profesori".</div></div>
     </div>
     ${!s?`<div class="field"><label>Avans / plată inițială (${CURRENCY})</label><input id="f_initpay" type="number" min="0" value="0"><div class="hint">Se înregistrează automat ca încasare la <b>data începerii</b>.</div></div>`:''}
     <div class="field"><label>Notițe</label><textarea id="f_notes" placeholder="observații, preferințe orar, etc.">${esc(s?s.notes:'')}</textarea></div>
@@ -778,6 +787,102 @@ function viewExpenses(){
   </table></div>`}`;
 }
 function delExpense(id){ confirmModal('Ștergi această cheltuială?','',()=>{DB.expenses=DB.expenses.filter(e=>e.id!==id);save();render();toast('Cheltuială ștearsă','ok');}); }
+
+/* ---------- PROFESORI / SALARII ---------- */
+let salPeriod={year:now.getFullYear(), month:now.getMonth()};
+function instructorById(id){ return DB.instructors.find(i=>i.id===id); }
+function salaryMonthKey(){ return `${salPeriod.year}-${String(salPeriod.month+1).padStart(2,'0')}`; }
+function instrMonthIncome(instr,year,month){
+  const pre=`${year}-${String(month+1).padStart(2,'0')}`; const nm=(instr.name||'').toLowerCase();
+  return DB.payments.reduce((a,p)=>{ if(!p.date||p.date.slice(0,7)!==pre) return a; const st=studentById(p.studentId); return (st&&(st.instructor||'').toLowerCase()===nm)?a+Number(p.amount||0):a; },0);
+}
+function salaryExpenseFor(instrId,ym){ return DB.expenses.find(e=>e.salary&&e.instructorId===instrId&&e.salaryMonth===ym); }
+function paySalary(instrId){
+  const instr=instructorById(instrId); if(!instr) return;
+  const ym=salaryMonthKey();
+  if(salaryExpenseFor(instrId,ym)){ toast('Salariul pe luna asta e deja plătit','err'); return; }
+  const income=instrMonthIncome(instr,salPeriod.year,salPeriod.month);
+  const amount=Math.round(income*Number(instr.percent||0)/100);
+  if(amount<=0){ toast('Salariu 0 — nu există încasări sau procent','err'); return; }
+  const last=new Date(salPeriod.year,salPeriod.month+1,0);
+  const date=`${salPeriod.year}-${String(salPeriod.month+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
+  DB.expenses.push({id:uid(),category:'Salarii & colaboratori',amount,date,description:`Salariu ${instr.name} · ${MONTHS_FULL[salPeriod.month]} ${salPeriod.year} (${Number(instr.percent||0)}% din ${fmt(income)})`,salary:true,instructorId:instrId,instructorName:instr.name,salaryMonth:ym,percent:Number(instr.percent||0),baseIncome:income,createdAt:Date.now()});
+  save(); render(); toast(`Salariu ${fmt(amount)} trecut la cheltuieli`,'ok');
+}
+function unpaySalary(instrId){
+  const e=salaryExpenseFor(instrId,salaryMonthKey()); if(!e) return;
+  confirmModal('Anulezi plata salariului?','Se șterge cheltuiala cu salariul pe luna aceasta.',()=>{ DB.expenses=DB.expenses.filter(x=>x.id!==e.id); save(); render(); toast('Plată salariu anulată','ok'); });
+}
+function openInstructorModal(id){
+  const i=id?instructorById(id):null;
+  modal(i?'Editează profesor':'Profesor nou',`
+    <div class="field"><label>Nume *</label><input id="i_name" value="${esc(i?i.name:'')}" placeholder="ex. Daniel Pop"></div>
+    <div class="field-row">
+      <div class="field"><label>Procent salariu (%) *</label><input id="i_pct" type="number" min="0" max="100" value="${i?Number(i.percent||0):50}"></div>
+      <div class="field"><label>Telefon</label><input id="i_phone" value="${esc(i?i.phone:'')}" placeholder="opțional"></div>
+    </div>
+    <div class="hint">Salariul lunar = procent × încasările aduse de cursanții lui în acea lună.</div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveInstructor('${id||''}')">${i?'Salvează':'Adaugă'}</button>`);
+  setTimeout(()=>$('#i_name')&&$('#i_name').focus(),50);
+}
+function saveInstructor(id){
+  const name=$('#i_name').value.trim(); if(!name){toast('Numele e obligatoriu','err');return;}
+  const data={name,percent:Number($('#i_pct').value||0),phone:$('#i_phone').value.trim()};
+  if(id){ const it=instructorById(id); const oldName=it.name; Object.assign(it,data);
+    if(oldName&&oldName.toLowerCase()!==name.toLowerCase()){ DB.students.forEach(s=>{ if((s.instructor||'').toLowerCase()===oldName.toLowerCase()) s.instructor=name; }); }
+    toast('Profesor actualizat','ok');
+  } else { data.id=uid(); data.createdAt=Date.now(); DB.instructors.push(data); toast('Profesor adăugat','ok'); }
+  save(); closeModal(); render();
+}
+function delInstructor(id){
+  const i=instructorById(id); if(!i) return;
+  const cnt=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(i.name||'').toLowerCase()).length;
+  confirmModal(`Ștergi profesorul „${esc(i.name)}”?`,(cnt?`${cnt} cursant(i) rămân fără profesor. `:'')+'Salariile deja plătite NU se șterg.',()=>{ DB.instructors=DB.instructors.filter(x=>x.id!==id); save(); render(); toast('Profesor șters','ok'); });
+}
+function viewInstructors(){
+  const ym=salaryMonthKey();
+  const list=DB.instructors.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const yrs=[]; for(let y=now.getFullYear()-3;y<=now.getFullYear()+1;y++) yrs.push(y);
+  let totalSal=0, totalPaid=0;
+  const rows=list.map(i=>{
+    const income=instrMonthIncome(i,salPeriod.year,salPeriod.month);
+    const sal=Math.round(income*Number(i.percent||0)/100);
+    const paidExp=salaryExpenseFor(i.id,ym);
+    totalSal+=sal; if(paidExp) totalPaid+=Number(paidExp.amount||0);
+    const studCnt=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(i.name||'').toLowerCase()).length;
+    return `<tr>
+      <td><b>${esc(i.name)}</b>${i.phone?`<br><small style="color:var(--muted)">${esc(i.phone)}</small>`:''}<br><small style="color:var(--muted)">${studCnt} cursant${studCnt===1?'':'i'}</small></td>
+      <td class="num">${Number(i.percent||0)}%</td>
+      <td class="num">${fmt(income)}</td>
+      <td class="num" style="font-weight:700;color:var(--primary)">${fmt(sal)}</td>
+      <td>${paidExp?`<span class="badge b-green">Plătit ✓</span><br><small style="color:var(--muted)">${fmt(paidExp.amount)}</small>`:(sal>0?`<button class="btn btn-primary btn-sm" onclick="paySalary('${i.id}')">💸 Plătește</button>`:'<small style="color:var(--muted)">—</small>')}</td>
+      <td><div class="row-actions">
+        ${paidExp?`<button class="icon-btn danger" title="Anulează plata" onclick="unpaySalary('${i.id}')">↩️</button>`:''}
+        <button class="icon-btn" title="Editează" onclick="openInstructorModal('${i.id}')">✏️</button>
+        <button class="icon-btn danger" title="Șterge" onclick="delInstructor('${i.id}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="toolbar">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="color:var(--muted);font-size:13px">Luna salariilor:</span>
+      <select onchange="salPeriod.month=+this.value;render()">${MONTHS_FULL.map((m,idx)=>`<option value="${idx}" ${idx===salPeriod.month?'selected':''}>${m}</option>`).join('')}</select>
+      <select onchange="salPeriod.year=+this.value;render()">${yrs.map(y=>`<option ${y===salPeriod.year?'selected':''}>${y}</option>`).join('')}</select>
+    </div>
+    <button class="btn btn-primary" onclick="openInstructorModal()">＋ Profesor</button>
+  </div>
+  ${!list.length?`<div class="card empty"><div class="big">🧑‍🏫</div>Niciun profesor încă.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openInstructorModal()">＋ Adaugă primul profesor</button></div>`:`
+  <div class="card" style="margin-bottom:14px">
+    <div style="color:var(--muted);font-size:13px">Salariul = <b>procent × încasările aduse de cursanții profesorului</b> în luna selectată (<b>${MONTHS_FULL[salPeriod.month]} ${salPeriod.year}</b>). Apasă „💸 Plătește" ca să-l treci automat la Cheltuieli pe luna respectivă.</div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Profesor</th><th class="num">Procent</th><th class="num">Încasări lună</th><th class="num">Salariu</th><th>Plată</th><th></th></tr></thead>
+    <tbody>${rows}
+      <tr style="border-top:2px solid var(--border)"><td><b>TOTAL</b></td><td></td><td></td><td class="num"><b>${fmt(totalSal)}</b></td><td><small style="color:var(--muted)">plătit: ${fmt(totalPaid)}</small></td><td></td></tr>
+    </tbody>
+  </table></div>`}`;
+}
 
 /* ---------- REPORTS ---------- */
 function viewReports(){

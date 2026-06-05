@@ -652,7 +652,15 @@ function saveStudent(id){
     courseId, price:Number($('#f_price').value||0), startDate:$('#f_start').value||todayISO(),
     status:$('#f_status').value, instructor:$('#f_instr').value.trim(), notes:$('#f_notes').value.trim(),
   };
-  if(id){ Object.assign(studentById(id),data); toast('Cursant actualizat','ok'); }
+  if(id){
+    const st=studentById(id); const oldStart=st.startDate;
+    Object.assign(st,data);
+    let moved=0;
+    if(oldStart&&data.startDate&&oldStart!==data.startDate){
+      DB.payments.forEach(p=>{ if(p.studentId===id&&p.date===oldStart){ p.date=data.startDate; moved++; } });
+    }
+    toast(moved?`Cursant actualizat · ${moved} ${moved===1?'plată mutată':'plăți mutate'} pe noua dată`:'Cursant actualizat','ok');
+  }
   else{
     data.id=uid(); data.createdAt=Date.now(); DB.students.push(data);
     const init=Number($('#f_initpay').value||0);

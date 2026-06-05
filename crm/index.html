@@ -257,7 +257,8 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     <nav class="nav" id="navDesktop"></nav>
     <div class="nav-footer">
       <div id="dbStamp">—</div>
-      <div style="margin-top:4px">v1.0 · date locale</div>
+      <div id="syncStatus" style="margin-top:4px"></div>
+      <div style="margin-top:4px">v1.1 · sincronizare cloud</div>
     </div>
   </aside>
 
@@ -297,6 +298,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
    STORE — persistență localStorage
    ============================================================ */
 const KEY='select_academy_crm_v1';
+const SYNC_KEY='select_academy_sync_v1';
 const CURRENCY='lei';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
@@ -326,7 +328,7 @@ function load(){
     return d;
   }catch(e){ return blankDB(); }
 }
-function save(){ DB.updatedAt=Date.now(); localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); }
+function save(){ DB.updatedAt=Date.now(); localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); if(window.Sync) Sync.schedulePush(); }
 
 /* ============================================================
    HELPERS
@@ -870,7 +872,29 @@ function delCourse(id){
 /* ---------- SETTINGS ---------- */
 function viewSettings(){
   const sz=(new Blob([localStorage.getItem(KEY)||'']).size/1024).toFixed(1);
+  const syncOn=Sync.on();
+  const last=syncOn&&Sync.cfg.lastSync?new Date(Sync.cfg.lastSync).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
   return `
+  <div class="card" style="margin-bottom:18px;border:1px solid var(--primary)">
+    <div class="section-title" style="margin-top:0">☁️ Sincronizare între dispozitive</div>
+    ${syncOn?`
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Sincronizare <b style="color:var(--success)">activă</b>. Aceleași date apar pe toate dispozitivele cu acest cod și parolă. Ultima sincronizare: ${last}.</p>
+      <div class="field" style="max-width:340px"><label>Cod de sincronizare (pentru celelalte dispozitive)</label><input readonly value="${esc(Sync.cfg.id)}" style="font-weight:700" onclick="this.select()"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="copyText('${esc(Sync.cfg.id)}')">📋 Copiază codul</button>
+        <button class="btn btn-ghost btn-sm" onclick="Sync.pull()">🔄 Reîmprospătează</button>
+        <button class="btn btn-ghost btn-sm" onclick="Sync.push()">⬆️ Trimite acum</button>
+        <button class="btn btn-danger btn-sm" onclick="syncDisconnect()">Oprește pe acest dispozitiv</button>
+      </div>
+    `:`
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Activează ca să vezi <b>aceleași date pe calculator și telefon</b>. Datele sunt criptate cu o parolă aleasă de tine.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="openSyncStart()">☁️ Pornește sincronizarea</button>
+        <button class="btn btn-ghost" onclick="openSyncConnect()">🔗 Conectează la un cod</button>
+      </div>
+      <div class="hint" style="margin-top:12px">Pornește pe <b>primul</b> dispozitiv → primești un cod → pe celelalte apeși „Conectează la un cod".</div>
+    `}
+  </div>
   <div class="grid row2">
     <div class="card">
       <div class="section-title" style="margin-top:0">💾 Backup & restaurare</div>
@@ -978,9 +1002,132 @@ function runConfirm(){ closeModal(); if(_confirmCb)_confirmCb(); _confirmCb=null
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 
 /* ============================================================
+   SINCRONIZARE ONLINE (criptată) — între dispozitive
+   Stocare: jsonblob.com (fără cont). Datele se criptează cu o
+   parolă (AES-GCM) înainte de a pleca de pe dispozitiv.
+   ============================================================ */
+const JB='https://jsonblob.com/api/jsonBlob';
+function _b64(u8){let s='';for(let i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);return btoa(s);}
+function _ub64(str){const s=atob(str);const u8=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u8[i]=s.charCodeAt(i);return u8;}
+async function _deriveKey(pass,salt){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function _encrypt(obj,pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await _deriveKey(pass,salt);
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj))));
+  return {s:_b64(salt),iv:_b64(iv),ct:_b64(ct)};
+}
+async function _decrypt(enc,pass){
+  const key=await _deriveKey(pass,_ub64(enc.s));
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:_ub64(enc.iv)},key,_ub64(enc.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function _jbCreate(payload){
+  const r=await fetch(JB,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok) throw new Error('create '+r.status);
+  let loc=r.headers.get('Location')||r.headers.get('X-jsonblob');
+  if(!loc) throw new Error('no-id');
+  return loc.split('/').pop();
+}
+async function _jbGet(id){
+  const r=await fetch(JB+'/'+id,{headers:{'Accept':'application/json'}});
+  if(!r.ok) throw new Error('get '+r.status);
+  return r.json();
+}
+async function _jbPut(id,payload){
+  const r=await fetch(JB+'/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok) throw new Error('put '+r.status);
+}
+const Sync={
+  cfg:null, busy:false, _t:null,
+  load(){ try{this.cfg=JSON.parse(localStorage.getItem(SYNC_KEY)||'null');}catch(e){this.cfg=null;} },
+  saveCfg(){ localStorage.setItem(SYNC_KEY,JSON.stringify(this.cfg)); },
+  on(){ return !!(this.cfg&&this.cfg.id); },
+  setStatus(s,cls){ const el=document.getElementById('syncStatus'); if(el){ el.textContent=s?('☁️ '+s):''; el.style.color=cls==='err'?'var(--danger)':cls==='ok'?'var(--success)':'var(--muted)'; } },
+  async start(pass){
+    const payload={updatedAt:DB.updatedAt||Date.now(),enc:await _encrypt(DB,pass)};
+    const id=await _jbCreate(payload);
+    this.cfg={id,pass,lastSync:Date.now()}; this.saveCfg(); this.setStatus('Sincronizat',' ok'); return id;
+  },
+  async connect(id,pass){
+    const payload=await _jbGet(id);
+    const remote=await _decrypt(payload.enc,pass); // aruncă eroare dacă parola e greșită
+    this.cfg={id,pass,lastSync:Date.now()}; this.saveCfg();
+    DB=remote; localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); render(); this.setStatus('Sincronizat','ok');
+  },
+  async push(){
+    if(!this.on()||this.busy) return; this.busy=true; this.setStatus('Se salvează…');
+    try{ await _jbPut(this.cfg.id,{updatedAt:DB.updatedAt||Date.now(),enc:await _encrypt(DB,this.cfg.pass)});
+      this.cfg.lastSync=Date.now(); this.saveCfg(); this.setStatus('Sincronizat','ok');
+    }catch(e){ this.setStatus('Offline — salvat local','err'); }
+    this.busy=false;
+  },
+  async pull(){
+    if(!this.on()) return; if(document.getElementById('overlay').classList.contains('open')) return;
+    try{ const payload=await _jbGet(this.cfg.id);
+      if(payload&&payload.updatedAt&&payload.updatedAt>(DB.updatedAt||0)){
+        const remote=await _decrypt(payload.enc,this.cfg.pass);
+        DB=remote; localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); render(); this.setStatus('Sincronizat','ok');
+      }
+    }catch(e){ /* rămâne pe datele locale */ }
+  },
+  schedulePush(){ if(!this.on())return; clearTimeout(this._t); this._t=setTimeout(()=>this.push(),1500); },
+  disconnect(){ this.cfg=null; localStorage.removeItem(SYNC_KEY); this.setStatus(''); render(); toast('Sincronizare oprită pe acest dispozitiv','ok'); },
+  async init(){ this.load(); if(this.on()){ this.setStatus('Se conectează…'); await this.pull(); await this.push(); } }
+};
+window.Sync=Sync;
+
+function copyText(t){ try{ navigator.clipboard.writeText(t); toast('Copiat','ok'); }catch(e){ toast('Selectează și copiază manual','err'); } }
+function openSyncStart(){
+  modal('☁️ Pornește sincronizarea',`
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Alege o <b>parolă de sincronizare</b>. Cu ea se criptează datele și o vei folosi pe celelalte dispozitive ca să le deschizi.</p>
+    <div class="field"><label>Parolă sincronizare *</label><input id="sy_p" type="password" placeholder="ex. selectacademy2026"></div>
+    <div class="field"><label>Confirmă parola *</label><input id="sy_p2" type="password"></div>
+    <div class="hint">⚠️ Notează parola undeva. Dacă o uiți, datele din cloud nu mai pot fi citite (sunt criptate).</div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" id="sy_go" onclick="doSyncStart()">Pornește</button>`);
+}
+async function doSyncStart(){
+  const p=$('#sy_p').value, p2=$('#sy_p2').value;
+  if(p.length<4){toast('Parola: minim 4 caractere','err');return;}
+  if(p!==p2){toast('Parolele nu coincid','err');return;}
+  $('#sy_go').textContent='Se creează…'; $('#sy_go').disabled=true;
+  try{ const id=await Sync.start(p); closeModal(); showSyncCode(id); render(); }
+  catch(e){ toast('Nu am putut porni (verifică internetul). Încearcă din nou.','err'); const g=$('#sy_go'); if(g){g.textContent='Pornește';g.disabled=false;} }
+}
+function showSyncCode(id){
+  modal('✅ Sincronizare pornită',`
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Pe <b>celelalte dispozitive</b> (telefon/calculator) deschide aceeași aplicație → <b>Setări</b> → <b>„Conectează la un cod"</b> și introdu codul de mai jos + aceeași parolă.</p>
+    <div class="field"><label>Cod de sincronizare</label><input id="sy_code" readonly value="${esc(id)}" style="font-weight:700;font-size:16px" onclick="this.select()"></div>
+    <button class="btn btn-ghost btn-sm" onclick="copyText('${esc(id)}')">📋 Copiază codul</button>
+    <div class="hint" style="margin-top:14px">De acum, orice modifici se salvează automat online și apare pe toate dispozitivele conectate.</div>
+  `,`<button class="btn btn-primary" onclick="closeModal()">Am înțeles</button>`);
+}
+function openSyncConnect(){
+  modal('☁️ Conectează la sincronizare',`
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Introdu <b>codul</b> și <b>parola</b> setate pe primul dispozitiv.</p>
+    <div class="field"><label>Cod de sincronizare *</label><input id="cy_id" placeholder="lipește codul aici"></div>
+    <div class="field"><label>Parolă *</label><input id="cy_p" type="password"></div>
+    <div class="hint">⚠️ Datele de pe acest dispozitiv vor fi înlocuite cu cele din cloud.</div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" id="cy_go" onclick="doSyncConnect()">Conectează</button>`);
+}
+async function doSyncConnect(){
+  const id=$('#cy_id').value.trim(), p=$('#cy_p').value;
+  if(!id||!p){toast('Completează codul și parola','err');return;}
+  $('#cy_go').textContent='Se conectează…'; $('#cy_go').disabled=true;
+  try{ await Sync.connect(id,p); closeModal(); toast('Conectat! Datele s-au sincronizat','ok'); }
+  catch(e){ toast('Cod sau parolă greșite (ori fără internet)','err'); const g=$('#cy_go'); if(g){g.textContent='Conectează';g.disabled=false;} }
+}
+function syncDisconnect(){ confirmModal('Oprești sincronizarea pe acest dispozitiv?','Datele rămân salvate local aici. Celelalte dispozitive continuă sincronizarea.',()=>Sync.disconnect()); }
+
+/* ============================================================
    INIT
    ============================================================ */
-buildNav(); renderStamp(); render();
+buildNav(); renderStamp(); Sync.load(); render();
+Sync.init();
+window.addEventListener('focus',()=>Sync.pull());
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) Sync.pull(); });
 </script>
 </body>
 </html>

@@ -340,7 +340,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     <div class="nav-footer">
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v1.6 · dashboard pe tot ecranul</div>
+      <div style="margin-top:4px">v1.7 · export Excel aranjat</div>
     </div>
   </aside>
 
@@ -377,6 +377,9 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
   <div class="modal" id="modal"></div>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- SheetJS pentru export Excel (.xlsx) — opțional, are fallback la CSV dacă nu se încarcă -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
 /* ============================================================
@@ -1011,7 +1014,7 @@ function viewReports(){
   <div class="toolbar no-print">
     <div style="flex:1;color:var(--muted);font-size:13.5px">Perioadă analizată: <b style="color:var(--text)">${periodLabel()}</b></div>
     <button class="btn btn-ghost" onclick="window.print()">🖨️ Printează / PDF</button>
-    <button class="btn btn-ghost" onclick="exportCSV()">⬇️ Export CSV</button>
+    <button class="btn btn-ghost" onclick="exportExcel()">⬇️ Export Excel</button>
   </div>
 
   <div class="grid kpis">
@@ -1130,7 +1133,7 @@ function viewSettings(){
         <button class="btn btn-primary" onclick="exportJSON()">⬇️ Descarcă backup (.json)</button>
         <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">⬆️ Importă backup</button>
         <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
-        <button class="btn btn-ghost" onclick="exportCSV()">📑 Export rapoarte CSV</button>
+        <button class="btn btn-ghost" onclick="exportExcel()">📑 Export Excel (.xlsx)</button>
       </div>
       <div class="hint" style="margin-top:12px">Dimensiune date: ${sz} KB · ${DB.students.length} cursanți · ${DB.payments.length} încasări · ${DB.expenses.length} cheltuieli</div>
     </div>
@@ -1179,6 +1182,70 @@ function exportCSV(){
   const a=aggregate(f,t);
   csv+=`\nSUMAR\nVenituri,${a.income}\nCheltuieli,${a.expense}\nProfit,${a.profit}\nCursanti noi,${a.newStudents}\n`;
   download(`select-academy-raport-${todayISO()}.csv`,'﻿'+csv,'text/csv;charset=utf-8'); toast('CSV exportat','ok');
+}
+function exportExcel(){
+  if(typeof XLSX==='undefined'){ exportCSV(); toast('Excel indisponibil (fără net) — am exportat CSV','err'); return; }
+  const [f,t]=periodRange();
+  const a=aggregate(f,t);
+  const margin=a.income>0?Math.round(a.profit/a.income*100):0;
+  const statL={in_curs:'În curs',finalizat:'Finalizat',abandonat:'Abandonat'};
+  const wb=XLSX.utils.book_new();
+  // Sumar
+  const byCourse={}; DB.payments.filter(p=>inRange(p.date,f,t)).forEach(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;const k=c?c.name:'Altele';byCourse[k]=(byCourse[k]||0)+Number(p.amount||0);});
+  const byCat={}; DB.expenses.filter(e=>inRange(e.date,f,t)).forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0);});
+  const cnt={in_curs:0,finalizat:0,abandonat:0}; DB.students.forEach(s=>cnt[s.status]=(cnt[s.status]||0)+1);
+  const sumar=[
+    ['SELECT ACADEMY — Raport financiar'],
+    ['Perioadă', periodLabel()],
+    ['Generat', new Date().toLocaleString('ro-RO')],
+    [],
+    ['SUMAR FINANCIAR'],
+    ['Venituri', a.income],
+    ['Cheltuieli', a.expense],
+    ['Profit', a.profit],
+    ['Marjă (%)', margin],
+    [],
+    ['CURSANȚI'],
+    ['Total', DB.students.length],
+    ['Activi (în curs)', cnt.in_curs],
+    ['Finalizați', cnt.finalizat],
+    ['Abandonați', cnt.abandonat],
+    ['Noi în perioadă', a.newStudents],
+    [],
+    ['VENITURI PE TIP DE CURS'],
+    ['Curs','Sumă','%'],
+    ...Object.entries(byCourse).sort((x,y)=>y[1]-x[1]).map(([n,v])=>[n,v,a.income?Math.round(v/a.income*100):0]),
+    [],
+    ['CHELTUIELI PE CATEGORIE'],
+    ['Categorie','Sumă','%'],
+    ...Object.entries(byCat).sort((x,y)=>y[1]-x[1]).map(([n,v])=>[n,v,a.expense?Math.round(v/a.expense*100):0]),
+  ];
+  const wsS=XLSX.utils.aoa_to_sheet(sumar); wsS['!cols']=[{wch:28},{wch:16},{wch:8}];
+  XLSX.utils.book_append_sheet(wb,wsS,'Sumar');
+  // Încasări
+  const incRows=DB.payments.filter(p=>inRange(p.date,f,t)).sort((x,y)=>(x.date||'').localeCompare(y.date||'')).map(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;return [p.date,s?s.name:'(șters)',c?c.name:'',s?(s.instructor||''):'',p.method||'',p.note||'',Number(p.amount||0)];});
+  const inc=[['Data','Cursant','Curs','Profesor','Metodă','Notă','Sumă (lei)'],...incRows,[],['','','','','','TOTAL',a.income]];
+  const wsI=XLSX.utils.aoa_to_sheet(inc); wsI['!cols']=[{wch:12},{wch:22},{wch:18},{wch:14},{wch:13},{wch:22},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,wsI,'Încasări');
+  // Cheltuieli
+  const expRows=DB.expenses.filter(e=>inRange(e.date,f,t)).sort((x,y)=>(x.date||'').localeCompare(y.date||'')).map(e=>[e.date,e.category,e.description||'',Number(e.amount||0)]);
+  const exp=[['Data','Categorie','Descriere','Sumă (lei)'],...expRows,[],['','','TOTAL',a.expense]];
+  const wsE=XLSX.utils.aoa_to_sheet(exp); wsE['!cols']=[{wch:12},{wch:26},{wch:32},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,wsE,'Cheltuieli');
+  // Cursanți (toți)
+  const stuRows=DB.students.slice().sort((x,y)=>(y.startDate||'').localeCompare(x.startDate||'')).map(s=>{const c=courseById(s.courseId);const paid=paidFor(s.id);const price=Number(s.price||0);return [s.name,s.phone||'',s.email||'',c?c.name:'',s.instructor||'',s.startDate||'',statL[s.status]||s.status,price,paid,Math.max(0,price-paid)];});
+  const stu=[['Nume','Telefon','Email','Curs','Profesor','Început','Status','Preț','Achitat','Rest'],...stuRows];
+  const wsC=XLSX.utils.aoa_to_sheet(stu); wsC['!cols']=[{wch:22},{wch:14},{wch:22},{wch:18},{wch:14},{wch:12},{wch:12},{wch:10},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,wsC,'Cursanți');
+  // Profesori
+  const profRows=DB.instructors.slice().sort((x,y)=>(x.name||'').localeCompare(y.name||'')).map(i=>{const nstud=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(i.name||'').toLowerCase()).length;const paidSal=DB.expenses.filter(e=>e.salary&&e.instructorId===i.id).reduce((acc,e)=>acc+Number(e.amount||0),0);return [i.name,Number(i.percent||0),i.phone||'',nstud,paidSal];});
+  if(profRows.length){
+    const prof=[['Profesor','Procent (%)','Telefon','Nr. cursanți','Salarii plătite (total)'],...profRows];
+    const wsP=XLSX.utils.aoa_to_sheet(prof); wsP['!cols']=[{wch:22},{wch:12},{wch:14},{wch:13},{wch:22}];
+    XLSX.utils.book_append_sheet(wb,wsP,'Profesori');
+  }
+  XLSX.writeFile(wb,`select-academy-raport-${todayISO()}.xlsx`);
+  toast('Excel (.xlsx) exportat','ok');
 }
 function resetAll(){
   confirmModal('Ștergi TOATE datele?','Această acțiune este ireversibilă. Recomandăm un backup înainte.',()=>{

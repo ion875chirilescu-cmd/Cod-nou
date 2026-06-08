@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v2.7 · recuperare proprietar</div>
+      <div style="margin-top:4px">v2.8 · resetare parolă</div>
     </div>
   </aside>
 
@@ -1362,7 +1362,7 @@ function viewSettings(){
           <option value="angajat" ${ur==='angajat'?'selected':''}>Angajat / Profesor</option>
         </select></td>
         <td>${ur==='angajat'?`<select onchange="Auth.setInstructor('${safe}',this.value)"><option value="">— niciunul —</option>${DB.instructors.map(i=>`<option value="${i.id}" ${u.instructorId===i.id?'selected':''}>${esc(i.name)}</option>`).join('')}</select>`:'<small style="color:var(--muted)">—</small>'}</td>
-        <td><div class="row-actions">${isMe?'':`<button class="icon-btn danger" title="Șterge cont" onclick="Auth.delAccount('${safe}')">🗑️</button>`}</div></td>
+        <td><div class="row-actions"><button class="icon-btn" title="Resetează parola" onclick="Auth.resetUserPasswordModal('${safe}')">🔑</button>${isMe?'':`<button class="icon-btn danger" title="Șterge cont" onclick="Auth.delAccount('${safe}')">🗑️</button>`}</div></td>
       </tr>`}).join('')}</tbody>
     </table></div>
     <div class="hint" style="margin-top:10px"><b>Proprietar:</b> control total. <b>Administrator:</b> vede tot + adaugă/editează, fără ștergere. <b>Angajat/Profesor:</b> vede doar cursanții lui și salariul lui pe lună (asociază-l unui profesor).</div>`;})()}
@@ -1706,6 +1706,22 @@ const Auth={
   cfg:{users:[]}, screen:'login',
   load(){ try{ this.cfg=JSON.parse(localStorage.getItem(AUTH_KEY))||{users:[]}; }catch(e){ this.cfg={users:[]}; } if(!this.cfg.users) this.cfg.users=[]; this.cfg.users.forEach(u=>{ if(!u.role||u.role==='admin') u.role='proprietar'; }); },
   saveCfg(){ localStorage.setItem(AUTH_KEY,JSON.stringify(this.cfg)); },
+  _push(){ if(window.Sync&&Sync.on()) _syncPushNow().catch(()=>{}); }, // propagă imediat schimbările de cont în cloud
+  resetUserPasswordModal(name){ if(!this.isOwner()) return; modal('🔑 Resetează parola · '+esc(name),`
+      <div class="field"><label>Parolă nouă *</label><input id="ru_new" type="password" placeholder="minim 4 caractere"></div>
+      <div class="field"><label>Confirmă parola nouă *</label><input id="ru_new2" type="password" placeholder="repetă parola"></div>
+      <div class="hint">Useri care și-au uitat parola: setezi una nouă aici și le-o comunici. Se aplică pe toate dispozitivele.</div>
+    `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="Auth.resetUserPassword('${esc(name).replace(/'/g,'')}')">Salvează parola</button>`); },
+  async resetUserPassword(name){
+    if(!this.isOwner()) return;
+    const u=this.find(name); if(!u) return toast('Cont inexistent','err');
+    const np=$('#ru_new').value||'', np2=$('#ru_new2').value||'';
+    if(np.length<4) return toast('Parola: minim 4 caractere','err');
+    if(np!==np2) return toast('Parolele nu coincid','err');
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    u.salt=_b64(salt); u.hash=await _authHash(np,salt); this.saveCfg(); this._push();
+    closeModal(); toast('Parolă resetată pentru „'+name+'"','ok');
+  },
   mergeRemote(remoteAuth){ // îmbină conturile primite din cloud cu cele locale (cloud are prioritate la conflict). Întoarce true dacă s-a schimbat ceva
     if(!remoteAuth||!Array.isArray(remoteAuth.users)) return false;
     const before=JSON.stringify(this.cfg.users);
@@ -1740,6 +1756,7 @@ const Auth={
   go(s){ this.screen=s; this.show(); },
   html(){
     if(this.screen==='recover') return this.htmlRecover();
+    if(this.screen==='recoverPick') return this.htmlRecoverPick();
     const reg=this.screen==='register', firstEver=!this.has();
     return `<div class="auth-card">
       <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
@@ -1758,30 +1775,58 @@ const Auth={
   htmlRecover(){
     return `<div class="auth-card">
       <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
-      <h2>🔑 Recuperare proprietar</h2>
-      <div class="sub">Folosește <b>tokenul GitHub + parola de sincronizare</b> ca să faci un cont <b>Proprietar</b>. Doar tu, care deții aceste chei, poți face asta.</div>
+      <h2>🔑 Recuperare acces</h2>
+      <div class="sub">Ai uitat parola sau ai pierdut accesul de proprietar? Folosește <b>tokenul GitHub + parola de sincronizare</b> (cheile pe care le deții) ca să resetezi un cont.</div>
       <div class="auth-err" id="au_err"></div>
       <div class="field"><label>Token GitHub</label><input id="rc_t" type="password" placeholder="ghp_..."></div>
       <div class="field"><label>Parolă de sincronizare</label><input id="rc_p" type="password" placeholder="parola de criptare a datelor"></div>
-      <div class="field"><label>Contul care devine Proprietar</label><input id="rc_u" autocomplete="username" placeholder="ex. ion110060"></div>
-      <button class="btn btn-primary" onclick="Auth.recover()">Recuperează accesul</button>
+      <button class="btn btn-primary" onclick="Auth.recoverConnect()">Continuă</button>
       <div class="auth-switch" style="margin-top:14px"><a onclick="Auth.go('login')">← Înapoi la autentificare</a></div>
     </div>`;
   },
-  async recover(){
-    const t=($('#rc_t').value||'').trim(), p=$('#rc_p').value||'', who=($('#rc_u').value||'').trim();
-    if(!t||!p||!who) return this.err('Completează toate câmpurile.');
+  async recoverConnect(){
+    const t=($('#rc_t').value||'').trim(), p=$('#rc_p').value||'';
+    if(!t||!p) return this.err('Completează tokenul și parola de sincronizare.');
     this.err('Se conectează la cloud…');
     try{
-      await Sync.connect(t,p,true);      // descarcă conturile + datele din spațiul sincronizat
+      await Sync.connect(t,p,true);   // descarcă conturile + datele din spațiul sincronizat
       this.load();
-      const u=this.find(who);
-      if(!u){ this.err('Nu există contul „'+who+'" în CRM. Verifică numele exact.'); return; }
-      u.role='proprietar'; this.saveCfg();
-      try{ await _syncPushNow(); }catch(e){}   // urcă rolul în cloud ca să rămână permanent
-      this.screen='login'; this.show(); this.err(''); toast('„'+who+'" este acum Proprietar. Autentifică-te.','ok');
-      setTimeout(()=>{ const el=$('#au_user'); if(el) el.value=who; },80);
-    }catch(e){ this.err(e&&e.message?e.message:'Eroare la recuperare'); }
+      if(!this.has()){ this.err('Spațiul nu conține conturi.'); return; }
+      this.screen='recoverPick'; this.show(); this.err('');
+    }catch(e){ this.err(e&&e.message?e.message:'Eroare la conectare'); }
+  },
+  htmlRecoverPick(){
+    const rows=this.cfg.users.map(u=>`<button class="btn btn-ghost" style="width:100%;justify-content:space-between;margin-bottom:8px" onclick="Auth.recoverPickModal('${esc(u.user).replace(/'/g,'')}')"><span>👤 ${esc(u.user)}</span><span style="color:var(--muted);font-size:12px">${ROLE_LABEL[u.role||'proprietar']}</span></button>`).join('');
+    return `<div class="auth-card">
+      <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
+      <h2>Alege contul de recuperat</h2>
+      <div class="sub">Apasă contul pentru care vrei să <b>setezi o parolă nouă</b> (și, opțional, să-l faci Proprietar).</div>
+      <div class="auth-err" id="au_err"></div>
+      <div style="margin:6px 0 4px">${rows||'<div style="color:var(--muted)">Niciun cont.</div>'}</div>
+      <div class="auth-switch" style="margin-top:10px"><a onclick="Auth.go('recover')">← Înapoi</a></div>
+    </div>`;
+  },
+  recoverPickModal(name){
+    this._recoverName=name;
+    modal('Resetează parola · '+esc(name),`
+      <div class="field"><label>Parolă nouă *</label><input id="rp_new" type="password" placeholder="minim 4 caractere"></div>
+      <div class="field"><label>Confirmă parola nouă *</label><input id="rp_new2" type="password" placeholder="repetă parola"></div>
+      <div class="field"><label><input type="checkbox" id="rp_owner" style="width:auto;margin-right:6px">Fă acest cont și <b>Proprietar</b></label></div>
+    `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="Auth.recoverApply()">Salvează</button>`);
+  },
+  async recoverApply(){
+    const name=this._recoverName; const u=this.find(name); if(!u) return toast('Cont inexistent','err');
+    const np=$('#rp_new').value||'', np2=$('#rp_new2').value||'', mkOwner=$('#rp_owner').checked;
+    if(np.length<4) return toast('Parola: minim 4 caractere','err');
+    if(np!==np2) return toast('Parolele nu coincid','err');
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    u.salt=_b64(salt); u.hash=await _authHash(np,salt);
+    if(mkOwner) u.role='proprietar';
+    this.saveCfg();
+    try{ await _syncPushNow(); }catch(e){}   // urcă în cloud ca să rămână permanent
+    closeModal();
+    this.screen='login'; this.show(); toast('Parolă resetată pentru „'+name+'". Autentifică-te.','ok');
+    setTimeout(()=>{ const el=$('#au_user'); if(el) el.value=name; },80);
   },
   err(m){ const e=$('#au_err'); if(e) e.textContent=m||''; },
   async register(){
@@ -1826,14 +1871,14 @@ const Auth={
     const rec={user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()};
     if(role==='angajat'){ const iid=$('#na_instr')?$('#na_instr').value:''; if(iid){ const ins=instructorById(iid); rec.instructorId=iid; rec.instructorName=ins?ins.name:''; } }
     this.cfg.users.push(rec);
-    this.saveCfg(); closeModal(); render(); toast('Cont „'+user+'" creat ('+ROLE_LABEL[role]+')','ok');
+    this.saveCfg(); this._push(); closeModal(); render(); toast('Cont „'+user+'" creat ('+ROLE_LABEL[role]+')','ok');
   },
   setRole(name,role){
     if(!this.isOwner()) return;
     const u=this.find(name); if(!u) return;
     const owners=this.cfg.users.filter(x=>(x.role||'proprietar')==='proprietar');
     if((u.role||'proprietar')==='proprietar' && role!=='proprietar' && owners.length<=1) return toast('Trebuie să rămână cel puțin un proprietar','err');
-    u.role=role; if(role!=='angajat'){ delete u.instructorId; delete u.instructorName; } this.saveCfg();
+    u.role=role; if(role!=='angajat'){ delete u.instructorId; delete u.instructorName; } this.saveCfg(); this._push();
     const cur=this.current();
     if(cur&&cur.user===u.user){ buildNav(); route=this.can(route)?route:this.landing(); }
     render(); toast('Rol actualizat: '+u.user+' → '+ROLE_LABEL[role],'ok');
@@ -1843,7 +1888,7 @@ const Auth={
     const u=this.find(name); if(!u) return;
     if(iid){ const ins=instructorById(iid); u.instructorId=iid; u.instructorName=ins?ins.name:''; }
     else { delete u.instructorId; delete u.instructorName; }
-    this.saveCfg(); render(); toast('Profesor asociat actualizat','ok');
+    this.saveCfg(); this._push(); render(); toast('Profesor asociat actualizat','ok');
   },
   changePasswordModal(){ modal('Schimbă parola',`
       <div class="field"><label>Parola actuală</label><input id="cp_cur" type="password"></div>
@@ -1857,7 +1902,7 @@ const Auth={
     if(np.length<4) return toast('Parola nouă: minim 4 caractere','err');
     if(np!==np2) return toast('Parolele nu coincid','err');
     const salt=crypto.getRandomValues(new Uint8Array(16));
-    u.salt=_b64(salt); u.hash=await _authHash(np,salt); this.saveCfg();
+    u.salt=_b64(salt); u.hash=await _authHash(np,salt); this.saveCfg(); this._push();
     closeModal(); toast('Parolă schimbată','ok');
   },
   delAccount(name){
@@ -1868,7 +1913,7 @@ const Auth={
     if((tgt.role||'proprietar')==='proprietar' && owners.length<=1) return toast('Trebuie să rămână cel puțin un proprietar','err');
     const cur=this.current();
     confirmModal('Ștergi contul „'+name+'"?','Contul nu va mai putea fi folosit pentru autentificare.',()=>{
-      this.cfg.users=this.cfg.users.filter(u=>u.user!==name); this.saveCfg();
+      this.cfg.users=this.cfg.users.filter(u=>u.user!==name); this.saveCfg(); this._push();
       if(cur&&cur.user===name){ localStorage.removeItem(SESS_KEY); this.boot(); } else { render(); }
       toast('Cont șters','ok');
     });

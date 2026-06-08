@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.1 · buton salvează rol</div>
+      <div style="margin-top:4px">v3.2 · link conectare dispozitiv</div>
     </div>
   </aside>
 
@@ -1313,6 +1313,7 @@ function viewSettings(){
         <button class="btn btn-ghost btn-sm" onclick="Sync.pull()">🔄 Reîmprospătează</button>
         <button class="btn btn-ghost btn-sm" onclick="Sync.push()">⬆️ Trimite acum</button>
         <button class="btn btn-ghost btn-sm" onclick="syncTest()">🔧 Testează conexiunea</button>
+        <button class="btn btn-ghost btn-sm" onclick="syncPairDevice()">🔗 Conectează un dispozitiv nou</button>
         <button class="btn btn-danger btn-sm" onclick="syncDisconnect()">Oprește pe acest dispozitiv</button>
       </div>
     `:`
@@ -1668,6 +1669,17 @@ async function doSyncConnect(){
   catch(e){ toast(e&&e.message?e.message:'Eroare la conectare','err'); const b=$('#gh_go'); if(b){b.textContent='Conectează';b.disabled=false;} }
 }
 function syncDisconnect(){ confirmModal('Oprești sincronizarea pe acest dispozitiv?','Datele rămân salvate local aici. Celelalte dispozitive continuă sincronizarea.',()=>Sync.disconnect()); }
+function syncPairDevice(){
+  if(!Sync.on()){ toast('Întâi activează sincronizarea','err'); return; }
+  const data=btoa(unescape(encodeURIComponent(JSON.stringify({t:Sync.cfg.token,p:Sync.cfg.pass}))));
+  const link=location.origin+location.pathname+'#pair='+encodeURIComponent(data);
+  modal('🔗 Conectează un dispozitiv nou',`
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Deschide acest link <b>pe dispozitivul nou</b> (îl trimiți prin mesaj, WhatsApp etc.). Se conectează automat, apoi acolo trebuie doar să te <b>autentifici cu utilizator + parolă</b>.</p>
+    <div class="field"><textarea id="pairLink" readonly style="width:100%;box-sizing:border-box;height:84px;font-size:12px" onclick="this.select()">${esc(link)}</textarea></div>
+    <button class="btn btn-primary btn-sm" onclick="(function(){var t=document.getElementById('pairLink');t.select();try{navigator.clipboard.writeText(t.value);toast('Link copiat','ok');}catch(e){toast('Selectează și copiază manual','err');}})()">📋 Copiază linkul</button>
+    <div class="hint" style="margin-top:12px">⚠️ Linkul conține cheia ta de sincronizare — trimite-l <b>doar persoanelor de încredere</b>. Oricine îl deschide poate accesa datele și adăuga pe acel dispozitiv.</div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Închide</button>`);
+}
 async function syncTest(){
   modal('🔧 Test sincronizare','<pre id="sytest" style="white-space:pre-wrap;font-size:13px;line-height:1.6;color:var(--text);margin:0">Se testează conexiunea…</pre>','<button class="btn btn-primary" onclick="closeModal()">Închide</button>');
   const log=[]; const upd=()=>{ const el=document.getElementById('sytest'); if(el) el.textContent=log.join('\n'); };
@@ -1768,7 +1780,7 @@ const Auth={
       <div class="field"><label>Parolă</label><input id="au_pass" type="password" autocomplete="${reg?'new-password':'current-password'}" placeholder="parola ta" onkeydown="if(event.key==='Enter'){${reg?'Auth.register()':'Auth.login()'}}"></div>
       ${reg?`<div class="field"><label>Confirmă parola</label><input id="au_pass2" type="password" autocomplete="new-password" placeholder="repetă parola" onkeydown="if(event.key==='Enter'){Auth.register()}"></div>`:''}
       <button class="btn btn-primary" onclick="${reg?'Auth.register()':'Auth.login()'}">${reg?'Creează cont':'Intră'}</button>
-      ${firstEver?'':`<div class="auth-switch">${reg?`Ai deja cont? <a onclick="Auth.go('login')">Autentifică-te</a>`:`Nu ai cont? <a onclick="Auth.go('register')">Creează cont nou</a>`}</div>`}
+      <div class="auth-switch">${reg?`Ai deja cont? <a onclick="Auth.go('login')">Autentifică-te</a>`:`Nu ai cont? <a onclick="Auth.go('register')">Creează cont nou</a>`}</div>
       <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('recover')">🔑 Ai uitat parola? Recuperare cont</a></div>
       <div class="auth-foot">🔒 Blocare locală pe acest dispozitiv</div>
     </div>`;
@@ -1951,13 +1963,33 @@ function stopIdleTimer(){ clearTimeout(_idleTimer); _idleTimer=null; }
 ['click','keydown','mousemove','touchstart','scroll'].forEach(ev=>
   document.addEventListener(ev,()=>{ if(_idleTimer!==null||Auth.authed()) resetIdleTimer(); },{passive:true}));
 
+/* Conectare automată a unui dispozitiv nou printr-un link (#pair=...) generat de proprietar */
+async function tryPairFromHash(){
+  const m=(location.hash||'').match(/pair=([^&]+)/);
+  if(!m) return false;
+  try{
+    const cfg=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+    history.replaceState(null,'',location.pathname+location.search); // curăță linkul imediat
+    if(cfg&&cfg.t&&cfg.p){
+      Auth.load();
+      await Sync.connect(cfg.t,cfg.p,true); // descarcă conturile + datele
+      toast('Dispozitiv conectat ✓ Autentifică-te.','ok');
+      return true;
+    }
+  }catch(e){ history.replaceState(null,'',location.pathname+location.search); toast('Link de conectare invalid','err'); }
+  return false;
+}
+
 /* ============================================================
    INIT
    ============================================================ */
-Auth.load(); Sync.load();
-renderStamp();
-Auth.boot();   // setează PREVIEW + DB (demo dacă nu ești logat, real dacă ești) și randează
-Sync.init();
+(async function(){
+  Auth.load(); Sync.load();
+  renderStamp();
+  Auth.boot();   // afișează imediat ecranul (login/creare) cu demo în spate
+  try{ const paired=await tryPairFromHash(); if(paired){ DB=buildDemoDB(); Auth.boot(); } }catch(e){}
+  Sync.init();
+})();
 window.addEventListener('focus',()=>Sync.pull());
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) Sync.pull(); });
 </script>

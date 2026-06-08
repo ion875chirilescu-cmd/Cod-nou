@@ -378,7 +378,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.6 · aplicație instalabilă (PWA)</div>
+      <div style="margin-top:4px">v3.7 · conectare dispozitiv + fix</div>
     </div>
   </aside>
 
@@ -1752,7 +1752,7 @@ const Auth={
   load(){ try{ this.cfg=JSON.parse(localStorage.getItem(AUTH_KEY))||{users:[]}; }catch(e){ this.cfg={users:[]}; } if(!this.cfg.users) this.cfg.users=[]; this.cfg.users.forEach(u=>{ if(!u.role||u.role==='admin') u.role='proprietar'; }); },
   saveCfg(){ localStorage.setItem(AUTH_KEY,JSON.stringify(this.cfg)); },
   _push(){ if(window.Sync&&Sync.on()) _syncPushNow().catch(()=>{}); }, // propagă imediat schimbările de cont în cloud
-  commit(){ this.cfg.authUpdatedAt=Date.now(); this.commit(); }, // marchează schimbarea ca fiind cea mai nouă + urcă în cloud
+  commit(){ this.cfg.authUpdatedAt=Date.now(); this.saveCfg(); this._push(); }, // marchează schimbarea ca fiind cea mai nouă + urcă în cloud
   resetUserPasswordModal(name){ if(!this.isOwner()) return; modal('🔑 Resetează parola · '+esc(name),`
       <div class="field"><label>Parolă nouă *</label><input id="ru_new" type="password" placeholder="minim 4 caractere"></div>
       <div class="field"><label>Confirmă parola nouă *</label><input id="ru_new2" type="password" placeholder="repetă parola"></div>
@@ -1801,6 +1801,7 @@ const Auth={
   hide(){ const g=$('#authGate'); g.classList.remove('show'); g.innerHTML=''; },
   go(s){ this.screen=s; this.show(); },
   html(){
+    if(this.screen==='connect') return this.htmlConnect();
     if(this.screen==='recover') return this.htmlRecover();
     if(this.screen==='recoverPick') return this.htmlRecoverPick();
     const reg=this.screen==='register', firstEver=!this.has();
@@ -1814,9 +1815,33 @@ const Auth={
       ${reg?`<div class="field"><label>Confirmă parola</label><input id="au_pass2" type="password" autocomplete="new-password" placeholder="repetă parola" onkeydown="if(event.key==='Enter'){Auth.register()}"></div>`:''}
       <button class="btn btn-primary" onclick="${reg?'Auth.register()':'Auth.login()'}">${reg?'Creează cont':'Intră'}</button>
       <div class="auth-switch">${reg?`Ai deja cont? <a onclick="Auth.go('login')">Autentifică-te</a>`:`Nu ai cont? <a onclick="Auth.go('register')">Creează cont nou</a>`}</div>
+      <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('connect')">📲 Dispozitiv nou? Conectează la CRM-ul tău</a></div>
       <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('recover')">🔑 Ai uitat parola? Recuperare cont</a></div>
       <div class="auth-foot">🔒 Blocare locală pe acest dispozitiv</div>
     </div>`;
+  },
+  htmlConnect(){
+    return `<div class="auth-card">
+      <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
+      <h2>📲 Conectează acest dispozitiv</h2>
+      <div class="sub">Pe un telefon/calculator nou (sau în aplicația instalată), introdu <b>tokenul GitHub + parola de sincronizare</b> ca să aduci datele și conturile tale. Apoi intri normal cu utilizator + parolă.</div>
+      <div class="auth-err" id="au_err"></div>
+      <div class="field"><label>Token GitHub</label><input id="cn_t" type="password" placeholder="ghp_..."></div>
+      <div class="field"><label>Parolă de sincronizare</label><input id="cn_p" type="password" placeholder="parola de criptare a datelor"></div>
+      <button class="btn btn-primary" onclick="Auth.connectDevice()">Conectează</button>
+      <div class="auth-switch" style="margin-top:14px"><a onclick="Auth.go('login')">← Înapoi la autentificare</a></div>
+    </div>`;
+  },
+  async connectDevice(){
+    const t=($('#cn_t').value||'').trim(), p=$('#cn_p').value||'';
+    if(!t||!p) return this.err('Completează tokenul și parola de sincronizare.');
+    this.err('Se conectează la cloud…');
+    try{
+      await Sync.connect(t,p,true);   // descarcă datele + conturile
+      this.load();
+      if(this.has()){ DB=buildDemoDB(); this.screen='login'; this.show(); this.err(''); toast('Conectat ✓ Acum autentifică-te.','ok'); }
+      else { this.err('Spațiul nu conține conturi. Creează primul cont.'); }
+    }catch(e){ this.err(e&&e.message?e.message:'Eroare la conectare'); }
   },
   htmlRecover(){
     return `<div class="auth-card">

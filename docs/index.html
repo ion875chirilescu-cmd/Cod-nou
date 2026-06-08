@@ -365,7 +365,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v2.1 · roluri + auto-logout</div>
+      <div style="margin-top:4px">v2.2 · ștergere protejată</div>
     </div>
   </aside>
 
@@ -1296,11 +1296,13 @@ function download(name,content,type){
 }
 function exportJSON(){ download(`select-academy-backup-${todayISO()}.json`,JSON.stringify(DB,null,2),'application/json'); toast('Backup descărcat','ok'); }
 function importJSON(ev){
+  if(!Auth.isAdmin()){ toast('Doar administratorul poate importa','err'); ev.target.value=''; return; }
   const file=ev.target.files[0]; if(!file)return;
   const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result);
     if(!d.students||!d.courses) throw 0;
-    confirmModal('Importă backup?','Datele curente vor fi înlocuite cu cele din fișier.',()=>{ DB=d; save(); render(); toast('Backup importat','ok'); });
+    const hasData=DB.students.length||DB.payments.length||DB.expenses.length;
+    confirmModal('Importă backup?',(hasData?'Datele curente vor fi înlocuite (se descarcă întâi un backup al lor). ':'')+'Continui?',()=>{ if(hasData){try{exportJSON();}catch(e){}} DB=d; save(); render(); toast('Backup importat','ok'); });
   }catch(e){ toast('Fișier invalid','err'); } };
   r.readAsText(file); ev.target.value='';
 }
@@ -1379,13 +1381,44 @@ function exportExcel(){
   XLSX.writeFile(wb,`select-academy-raport-${todayISO()}.xlsx`);
   toast('Excel (.xlsx) exportat','ok');
 }
+const RESET_PHRASE='STERGE TOT';
 function resetAll(){
-  confirmModal('Ștergi TOATE datele?','Această acțiune este ireversibilă. Recomandăm un backup înainte.',()=>{
-    DB=blankDB(); save(); render(); toast('Toate datele au fost șterse','ok');
-  });
+  if(!Auth.isAdmin()) return toast('Doar administratorul poate șterge datele','err');
+  const u=Auth.current();
+  modal('⚠️ Șterge toate datele',`
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Această acțiune este <b style="color:var(--danger)">ireversibilă</b>. Se șterg toți cursanții, încasările, cheltuielile și cursurile de pe acest dispozitiv.</p>
+    <div style="background:rgba(232,39,58,.08);border:1px solid var(--danger);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:14px;font-size:13px">🛟 Se va descărca automat un <b>backup</b> înainte de ștergere.</div>
+    <div class="field"><label>1. Scrie exact <b style="color:var(--text)">${RESET_PHRASE}</b> ca să confirmi</label><input id="rs_phrase" autocomplete="off" placeholder="${RESET_PHRASE}"></div>
+    ${u?`<div class="field"><label>2. Parola contului tău (${esc(u.user)})</label><input id="rs_pass" type="password" autocomplete="off" placeholder="parola ta"></div>`:''}
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-danger" onclick="confirmReset()">Șterge definitiv</button>`);
+}
+async function confirmReset(){
+  if(!Auth.isAdmin()) return;
+  const phrase=($('#rs_phrase').value||'').trim();
+  if(phrase!==RESET_PHRASE) return toast('Scrie exact: '+RESET_PHRASE,'err');
+  const u=Auth.current();
+  if(u){ const p=$('#rs_pass').value||''; if(await _authHash(p,_ub64(u.salt))!==u.hash) return toast('Parolă greșită','err'); }
+  try{ exportJSON(); }catch(e){}
+  DB=blankDB(); save(); render(); closeModal(); toast('Toate datele au fost șterse (backup descărcat)','ok');
 }
 function loadDemo(){
-  confirmModal('Încarci date demo?','Datele curente vor fi înlocuite.',()=>{
+  if(!Auth.isAdmin()) return toast('Doar administratorul poate face asta','err');
+  const hasData=DB.students.length||DB.payments.length||DB.expenses.length;
+  if(!hasData){ return _applyDemo(); }
+  const u=Auth.current();
+  modal('🧪 Încarci date demo?',`
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Ai deja date introduse. Acestea vor fi <b style="color:var(--danger)">înlocuite</b> cu date de test.</p>
+    <div style="background:rgba(232,39,58,.08);border:1px solid var(--danger);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:14px;font-size:13px">🛟 Se descarcă automat un <b>backup</b> înainte.</div>
+    ${u?`<div class="field"><label>Parola contului tău (${esc(u.user)})</label><input id="dm_pass" type="password" autocomplete="off" placeholder="parola ta"></div>`:''}
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-danger" onclick="confirmDemo()">Înlocuiește cu demo</button>`);
+}
+async function confirmDemo(){
+  const u=Auth.current();
+  if(u){ const p=$('#dm_pass').value||''; if(await _authHash(p,_ub64(u.salt))!==u.hash) return toast('Parolă greșită','err'); }
+  try{ exportJSON(); }catch(e){}
+  closeModal(); _applyDemo();
+}
+function _applyDemo(){
     DB=blankDB();
     const names=['Andrei Popescu','Mihai Ionescu','Cristian Dumitru','Ștefan Radu','Vlad Marin','Alex Georgescu','Robert Stan','Darius Nicolae','Sergiu Toma','Paul Ene','Ionuț Barbu','Cătălin Vasile'];
     const statuses=['in_curs','in_curs','in_curs','finalizat','finalizat','in_curs','finalizat','in_curs','abandonat','in_curs','finalizat','in_curs'];
@@ -1403,7 +1436,6 @@ function loadDemo(){
     const exCats=[['Chirie',2500],['Materiale & consumabile',1800],['Salarii & colaboratori',4000],['Marketing & publicitate',1200],['Utilități',600],['Echipamente',2200]];
     for(let m=1;m<=6;m++) exCats.forEach(([cat,amt])=>{ if(Math.random()>.2) DB.expenses.push({id:uid(),category:cat,amount:amt+Math.round((Math.random()-.5)*400),date:`${Y}-${String(m).padStart(2,'0')}-05`,description:cat+' luna '+MONTHS_FULL[m-1],createdAt:Date.now()}); });
     save(); render(); toast('Date demo încărcate','ok');
-  });
 }
 
 /* ============================================================

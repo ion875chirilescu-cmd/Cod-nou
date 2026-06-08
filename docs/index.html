@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v2.6 · fără cache vechi</div>
+      <div style="margin-top:4px">v2.7 · recuperare proprietar</div>
     </div>
   </aside>
 
@@ -1584,6 +1584,11 @@ async function _ghUpdate(token,id,payload){
 }
 /* Payload de sincronizare v2: date + conturi (login comun pe toate dispozitivele) */
 function _syncPayload(){ return {v:2, db:DB, auth:{users:Auth.cfg.users}}; }
+async function _syncPushNow(){ // urcă imediat în cloud (folosit la recuperare, ocolește gărzile)
+  if(!Sync.cfg||!Sync.cfg.token||!Sync.cfg.gistId) return;
+  await _ghUpdate(Sync.cfg.token,Sync.cfg.gistId,{updatedAt:DB.updatedAt||Date.now(),enc:await _encrypt(_syncPayload(),Sync.cfg.pass)});
+  Sync.cfg.lastSync=Date.now(); Sync.saveCfg();
+}
 function _applyRemote(obj, keepDB){
   let authChanged=false;
   if(obj && obj.v===2 && obj.db){
@@ -1600,9 +1605,10 @@ const Sync={
   saveCfg(){ localStorage.setItem(SYNC_KEY,JSON.stringify(this.cfg)); },
   on(){ return !!(this.cfg&&this.cfg.token&&this.cfg.gistId); },
   setStatus(s,cls){ const el=document.getElementById('syncStatus'); if(el){ el.textContent=s?('☁️ '+s):''; el.style.color=cls==='err'?'var(--danger)':cls==='ok'?'var(--success)':'var(--muted)'; } },
-  async connect(token,pass){
+  async connect(token,pass,mustExist){
     let id=await _ghFind(token);
     if(!id){
+      if(mustExist) throw new Error('Nu există un CRM sincronizat cu acest token.');
       id=await _ghCreate(token,{updatedAt:DB.updatedAt||Date.now(),enc:await _encrypt(_syncPayload(),pass)});
       this.cfg={token,pass,gistId:id,lastSync:Date.now()}; this.saveCfg();
     } else {
@@ -1733,6 +1739,7 @@ const Auth={
   hide(){ const g=$('#authGate'); g.classList.remove('show'); g.innerHTML=''; },
   go(s){ this.screen=s; this.show(); },
   html(){
+    if(this.screen==='recover') return this.htmlRecover();
     const reg=this.screen==='register', firstEver=!this.has();
     return `<div class="auth-card">
       <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
@@ -1744,8 +1751,37 @@ const Auth={
       ${reg?`<div class="field"><label>Confirmă parola</label><input id="au_pass2" type="password" autocomplete="new-password" placeholder="repetă parola" onkeydown="if(event.key==='Enter'){Auth.register()}"></div>`:''}
       <button class="btn btn-primary" onclick="${reg?'Auth.register()':'Auth.login()'}">${reg?'Creează cont':'Intră'}</button>
       ${firstEver?'':`<div class="auth-switch">${reg?`Ai deja cont? <a onclick="Auth.go('login')">Autentifică-te</a>`:`Nu ai cont? <a onclick="Auth.go('register')">Creează cont nou</a>`}</div>`}
+      <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('recover')">🔑 Recuperare acces de proprietar</a></div>
       <div class="auth-foot">🔒 Blocare locală pe acest dispozitiv</div>
     </div>`;
+  },
+  htmlRecover(){
+    return `<div class="auth-card">
+      <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
+      <h2>🔑 Recuperare proprietar</h2>
+      <div class="sub">Folosește <b>tokenul GitHub + parola de sincronizare</b> ca să faci un cont <b>Proprietar</b>. Doar tu, care deții aceste chei, poți face asta.</div>
+      <div class="auth-err" id="au_err"></div>
+      <div class="field"><label>Token GitHub</label><input id="rc_t" type="password" placeholder="ghp_..."></div>
+      <div class="field"><label>Parolă de sincronizare</label><input id="rc_p" type="password" placeholder="parola de criptare a datelor"></div>
+      <div class="field"><label>Contul care devine Proprietar</label><input id="rc_u" autocomplete="username" placeholder="ex. ion110060"></div>
+      <button class="btn btn-primary" onclick="Auth.recover()">Recuperează accesul</button>
+      <div class="auth-switch" style="margin-top:14px"><a onclick="Auth.go('login')">← Înapoi la autentificare</a></div>
+    </div>`;
+  },
+  async recover(){
+    const t=($('#rc_t').value||'').trim(), p=$('#rc_p').value||'', who=($('#rc_u').value||'').trim();
+    if(!t||!p||!who) return this.err('Completează toate câmpurile.');
+    this.err('Se conectează la cloud…');
+    try{
+      await Sync.connect(t,p,true);      // descarcă conturile + datele din spațiul sincronizat
+      this.load();
+      const u=this.find(who);
+      if(!u){ this.err('Nu există contul „'+who+'" în CRM. Verifică numele exact.'); return; }
+      u.role='proprietar'; this.saveCfg();
+      try{ await _syncPushNow(); }catch(e){}   // urcă rolul în cloud ca să rămână permanent
+      this.screen='login'; this.show(); this.err(''); toast('„'+who+'" este acum Proprietar. Autentifică-te.','ok');
+      setTimeout(()=>{ const el=$('#au_user'); if(el) el.value=who; },80);
+    }catch(e){ this.err(e&&e.message?e.message:'Eroare la recuperare'); }
   },
   err(m){ const e=$('#au_err'); if(e) e.textContent=m||''; },
   async register(){

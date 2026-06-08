@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v2.8 · resetare parolă</div>
+      <div style="margin-top:4px">v2.9 · recuperare cont</div>
     </div>
   </aside>
 
@@ -1768,15 +1768,15 @@ const Auth={
       ${reg?`<div class="field"><label>Confirmă parola</label><input id="au_pass2" type="password" autocomplete="new-password" placeholder="repetă parola" onkeydown="if(event.key==='Enter'){Auth.register()}"></div>`:''}
       <button class="btn btn-primary" onclick="${reg?'Auth.register()':'Auth.login()'}">${reg?'Creează cont':'Intră'}</button>
       ${firstEver?'':`<div class="auth-switch">${reg?`Ai deja cont? <a onclick="Auth.go('login')">Autentifică-te</a>`:`Nu ai cont? <a onclick="Auth.go('register')">Creează cont nou</a>`}</div>`}
-      <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('recover')">🔑 Recuperare acces de proprietar</a></div>
+      <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('recover')">🔑 Ai uitat parola? Recuperare cont</a></div>
       <div class="auth-foot">🔒 Blocare locală pe acest dispozitiv</div>
     </div>`;
   },
   htmlRecover(){
     return `<div class="auth-card">
       <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
-      <h2>🔑 Recuperare acces</h2>
-      <div class="sub">Ai uitat parola sau ai pierdut accesul de proprietar? Folosește <b>tokenul GitHub + parola de sincronizare</b> (cheile pe care le deții) ca să resetezi un cont.</div>
+      <h2>🔑 Recuperare cont</h2>
+      <div class="sub">Ai uitat parola? Folosește <b>tokenul GitHub + parola de sincronizare</b> ca să resetezi parola oricărui cont.</div>
       <div class="auth-err" id="au_err"></div>
       <div class="field"><label>Token GitHub</label><input id="rc_t" type="password" placeholder="ghp_..."></div>
       <div class="field"><label>Parolă de sincronizare</label><input id="rc_p" type="password" placeholder="parola de criptare a datelor"></div>
@@ -1800,7 +1800,7 @@ const Auth={
     return `<div class="auth-card">
       <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
       <h2>Alege contul de recuperat</h2>
-      <div class="sub">Apasă contul pentru care vrei să <b>setezi o parolă nouă</b> (și, opțional, să-l faci Proprietar).</div>
+      <div class="sub">Apasă contul pentru care vrei să <b>setezi o parolă nouă</b>.</div>
       <div class="auth-err" id="au_err"></div>
       <div style="margin:6px 0 4px">${rows||'<div style="color:var(--muted)">Niciun cont.</div>'}</div>
       <div class="auth-switch" style="margin-top:10px"><a onclick="Auth.go('recover')">← Înapoi</a></div>
@@ -1811,17 +1811,15 @@ const Auth={
     modal('Resetează parola · '+esc(name),`
       <div class="field"><label>Parolă nouă *</label><input id="rp_new" type="password" placeholder="minim 4 caractere"></div>
       <div class="field"><label>Confirmă parola nouă *</label><input id="rp_new2" type="password" placeholder="repetă parola"></div>
-      <div class="field"><label><input type="checkbox" id="rp_owner" style="width:auto;margin-right:6px">Fă acest cont și <b>Proprietar</b></label></div>
     `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="Auth.recoverApply()">Salvează</button>`);
   },
   async recoverApply(){
     const name=this._recoverName; const u=this.find(name); if(!u) return toast('Cont inexistent','err');
-    const np=$('#rp_new').value||'', np2=$('#rp_new2').value||'', mkOwner=$('#rp_owner').checked;
+    const np=$('#rp_new').value||'', np2=$('#rp_new2').value||'';
     if(np.length<4) return toast('Parola: minim 4 caractere','err');
     if(np!==np2) return toast('Parolele nu coincid','err');
     const salt=crypto.getRandomValues(new Uint8Array(16));
     u.salt=_b64(salt); u.hash=await _authHash(np,salt);
-    if(mkOwner) u.role='proprietar';
     this.saveCfg();
     try{ await _syncPushNow(); }catch(e){}   // urcă în cloud ca să rămână permanent
     closeModal();

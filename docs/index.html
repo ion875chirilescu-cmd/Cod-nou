@@ -350,6 +350,9 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
 .user-line{margin-bottom:8px; font-size:12.5px; color:var(--muted)}
 .user-line b{color:var(--text)}
 .user-line a{color:var(--primary); cursor:pointer; font-weight:600; margin-left:6px}
+/* Administrator & angajat: fără butoane de ștergere */
+body[data-role="administrator"] .icon-btn.danger{display:none!important}
+body[data-role="angajat"] .icon-btn.danger{display:none!important}
 </style>
 </head>
 <body>
@@ -365,7 +368,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v2.3 · demo doar la login</div>
+      <div style="margin-top:4px">v2.4 · roluri (proprietar/admin/angajat)</div>
     </div>
   </aside>
 
@@ -515,14 +518,21 @@ const NAV=[
   {id:'reports',   label:'Rapoarte',       icon:'📈'},
   {id:'instructors',label:'Profesori',     icon:'🧑‍🏫'},
   {id:'courses',   label:'Cursuri',        icon:'✂️'},
+  {id:'myzone',    label:'Zona mea',       icon:'🙋'},
   {id:'settings',  label:'Setări & backup',icon:'⚙️'},
 ];
 const MOBILE_NAV=['dashboard','students','payments','expenses','reports'];
-/* Rute permise pe rol. Angajatul NU vede finanțele sensibile (Tablou, Cheltuieli, Rapoarte, Profesori). */
+/* Roluri:
+   - proprietar  = drepturi depline (vede tot, editează, șterge, conturi, setări)
+   - administrator = vede tot + adaugă/editează date, FĂRĂ ștergere și fără management conturi/reset
+   - angajat (profesor) = vede doar „Zona mea": cursanții lui pe lună + salariul lui */
 const ROLE_ROUTES={
-  admin:['dashboard','students','payments','expenses','reports','instructors','courses','settings'],
-  angajat:['students','payments','courses','settings']
+  proprietar:['dashboard','students','payments','expenses','reports','instructors','courses','settings'],
+  administrator:['dashboard','students','payments','expenses','reports','instructors','courses','settings'],
+  angajat:['myzone','settings']
 };
+const ROLE_LABEL={proprietar:'Proprietar',administrator:'Administrator',angajat:'Angajat / Profesor'};
+let myZonePeriod={year:now.getFullYear(),month:now.getMonth()};
 let route='dashboard';
 let PREVIEW=false; // true cât timp NU ești logat → afișează date demo (nesalvate)
 
@@ -569,7 +579,7 @@ function setPeriodMode(m){ PERIOD.mode=m; render(); }
    ============================================================ */
 function render(){
   if(Auth.authed() && !Auth.can(route)) route=Auth.landing();
-  const titles={dashboard:'Tablou de bord',students:'Cursanți',payments:'Încasări',expenses:'Cheltuieli',reports:'Rapoarte financiare',courses:'Tipuri de cursuri',settings:'Setări & backup'};
+  const titles={dashboard:'Tablou de bord',students:'Cursanți',payments:'Încasări',expenses:'Cheltuieli',reports:'Rapoarte financiare',courses:'Tipuri de cursuri',myzone:'Zona mea',settings:'Setări & backup'};
   $('#pageTitle').textContent=titles[route]||'CRM';
   const showPeriod=(route==='dashboard'||route==='reports');
   $('#topbarExtra').innerHTML=showPeriod?periodWidget():'';
@@ -581,8 +591,10 @@ function render(){
   else if(route==='reports') v.innerHTML=viewReports();
   else if(route==='instructors') v.innerHTML=viewInstructors();
   else if(route==='courses') v.innerHTML=viewCourses();
+  else if(route==='myzone') v.innerHTML=viewMyZone();
   else if(route==='settings') v.innerHTML=viewSettings();
   markActive();
+  document.body.dataset.role=Auth.role()||'';
   const fabRoutes=['dashboard','students','payments','expenses','instructors','courses'];
   const fab=$('#fab'); if(fab) fab.classList.toggle('hide', !fabRoutes.includes(route));
   if(route==='dashboard') drawDashboardChart();
@@ -776,6 +788,7 @@ function studentsTable(list){
   </table></div>`;
 }
 function openStudentModal(id){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul să modifici date','err');
   const s=id?studentById(id):null;
   const courseOpts=DB.courses.map(c=>`<option value="${c.id}" data-price="${c.defaultPrice}" ${s&&s.courseId===c.id?'selected':''}>${esc(c.name)} (${fmt(c.defaultPrice)})</option>`).join('');
   const curInstr=s?(s.instructor||''):'';
@@ -833,6 +846,7 @@ function saveStudent(id){
   save(); closeModal(); render();
 }
 function delStudent(id){
+  if(!Auth.canDelete()) return toast('Doar proprietarul poate șterge','err');
   const s=studentById(id); if(!s)return;
   confirmModal(`Ștergi cursantul „${esc(s.name)}”?`,'Se vor șterge și încasările asociate. Acțiunea nu poate fi anulată.',()=>{
     DB.students=DB.students.filter(x=>x.id!==id);
@@ -843,6 +857,7 @@ function delStudent(id){
 
 /* ---------- PAYMENTS ---------- */
 function openPaymentModal(studentId,payId){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul să modifici date','err');
   const pay=payId?DB.payments.find(p=>p.id===payId):null;
   if(pay) studentId=pay.studentId;
   const s=studentById(studentId);
@@ -908,11 +923,13 @@ function paymentsTable(list){
   </table></div>`;
 }
 function delPayment(id){
+  if(!Auth.canDelete()) return toast('Doar proprietarul poate șterge','err');
   confirmModal('Ștergi această încasare?','',()=>{DB.payments=DB.payments.filter(p=>p.id!==id);save();render();toast('Încasare ștearsă','ok');});
 }
 
 /* ---------- EXPENSES ---------- */
 function openExpenseModal(id){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul să modifici date','err');
   const e=id?DB.expenses.find(x=>x.id===id):null;
   modal(`${e?'Editează cheltuială':'Cheltuială nouă'}`,`
     <div class="field"><label>Categorie *</label><select id="e_cat">${EXPENSE_CATS.map(c=>`<option ${e&&e.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
@@ -968,7 +985,7 @@ function expensesTable(list){
     </tbody>
   </table></div>`;
 }
-function delExpense(id){ confirmModal('Ștergi această cheltuială?','',()=>{DB.expenses=DB.expenses.filter(e=>e.id!==id);save();render();toast('Cheltuială ștearsă','ok');}); }
+function delExpense(id){ if(!Auth.canDelete()) return toast('Doar proprietarul poate șterge','err'); confirmModal('Ștergi această cheltuială?','',()=>{DB.expenses=DB.expenses.filter(e=>e.id!==id);save();render();toast('Cheltuială ștearsă','ok');}); }
 
 /* ---------- PROFESORI / SALARII ---------- */
 let salPeriod={year:now.getFullYear(), month:now.getMonth()};
@@ -980,6 +997,7 @@ function instrMonthIncome(instr,year,month){
 }
 function salaryExpenseFor(instrId,ym){ return DB.expenses.find(e=>e.salary&&e.instructorId===instrId&&e.salaryMonth===ym); }
 function paySalary(instrId){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul','err');
   const instr=instructorById(instrId); if(!instr) return;
   const ym=salaryMonthKey();
   if(salaryExpenseFor(instrId,ym)){ toast('Salariul pe luna asta e deja plătit','err'); return; }
@@ -992,10 +1010,12 @@ function paySalary(instrId){
   save(); render(); toast(`Salariu ${fmt(amount)} trecut la cheltuieli`,'ok');
 }
 function unpaySalary(instrId){
+  if(!Auth.canDelete()) return toast('Doar proprietarul poate anula','err');
   const e=salaryExpenseFor(instrId,salaryMonthKey()); if(!e) return;
   confirmModal('Anulezi plata salariului?','Se șterge cheltuiala cu salariul pe luna aceasta.',()=>{ DB.expenses=DB.expenses.filter(x=>x.id!==e.id); save(); render(); toast('Plată salariu anulată','ok'); });
 }
 function openInstructorModal(id){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul să modifici date','err');
   const i=id?instructorById(id):null;
   modal(i?'Editează profesor':'Profesor nou',`
     <div class="field"><label>Nume *</label><input id="i_name" value="${esc(i?i.name:'')}" placeholder="ex. Daniel Pop"></div>
@@ -1017,6 +1037,7 @@ function saveInstructor(id){
   save(); closeModal(); render();
 }
 function delInstructor(id){
+  if(!Auth.canDelete()) return toast('Doar proprietarul poate șterge','err');
   const i=instructorById(id); if(!i) return;
   const cnt=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(i.name||'').toLowerCase()).length;
   confirmModal(`Ștergi profesorul „${esc(i.name)}”?`,(cnt?`${cnt} cursant(i) rămân fără profesor. `:'')+'Salariile deja plătite NU se șterg.',()=>{ DB.instructors=DB.instructors.filter(x=>x.id!==id); save(); render(); toast('Profesor șters','ok'); });
@@ -1172,6 +1193,7 @@ function coursesGrid(list){
   <div style="color:var(--muted);font-size:13px;margin-top:12px"><b>TOTAL:</b> ${list.length} ${list.length===1?'tip de curs':'tipuri de curs'}${courseSearch?' (rezultate căutare)':''} · ${list.reduce((a,c)=>a+DB.students.filter(s=>s.courseId===c.id).length,0)} cursanți</div>`;
 }
 function openCourseModal(id){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul să modifici date','err');
   const c=id?courseById(id):null;
   const types=['Individual','Grup','Masterclass','Perfecționare','Altele'];
   modal(`${c?'Editează curs':'Tip de curs nou'}`,`
@@ -1191,30 +1213,91 @@ function saveCourse(id){
   save(); closeModal(); render(); toast(id?'Curs actualizat':'Curs adăugat','ok');
 }
 function delCourse(id){
+  if(!Auth.canDelete()) return toast('Doar proprietarul poate șterge','err');
   const cnt=DB.students.filter(s=>s.courseId===id).length;
   if(cnt>0){toast(`Nu poți șterge: ${cnt} cursanți folosesc acest curs`,'err');return;}
   confirmModal('Ștergi acest tip de curs?','',()=>{DB.courses=DB.courses.filter(c=>c.id!==id);save();render();toast('Curs șters','ok');});
 }
 
+/* ---------- ZONA MEA (angajat / profesor) ---------- */
+function myInstructor(){
+  const u=Auth.current(); if(!u) return null;
+  if(u.instructorId){ const i=instructorById(u.instructorId); if(i) return i; }
+  if(u.instructorName){ const i=DB.instructors.find(x=>(x.name||'').toLowerCase()===(u.instructorName||'').toLowerCase()); if(i) return i; }
+  return null;
+}
+function viewMyZone(){
+  const u=Auth.current();
+  const instr=myInstructor();
+  if(!instr) return `<div class="card empty"><div class="big">🙋</div>Salut${u?', '+esc(u.user):''}!<br>Contul tău nu este încă asociat unui profesor.<br><small style="color:var(--muted)">Roagă proprietarul să te lege de un profesor din <b>Setări → Cont & securitate</b>.</small></div>`;
+  const y=myZonePeriod.year, m=myZonePeriod.month, ym=`${y}-${String(m+1).padStart(2,'0')}`;
+  const income=instrMonthIncome(instr,y,m);
+  const sal=Math.round(income*Number(instr.percent||0)/100);
+  const paidExp=DB.expenses.find(e=>e.salary&&e.instructorId===instr.id&&e.salaryMonth===ym);
+  const mine=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(instr.name||'').toLowerCase());
+  const monthPay=sid=>DB.payments.filter(p=>p.studentId===sid&&(p.date||'').slice(0,7)===ym).reduce((a,p)=>a+Number(p.amount||0),0);
+  const withMonth=mine.filter(s=>monthPay(s.id)>0);
+  const yrs=[]; for(let yy=now.getFullYear()-3;yy<=now.getFullYear()+1;yy++) yrs.push(yy);
+  const stB={in_curs:'b-blue',finalizat:'b-green',abandonat:'b-gray'};
+  const stL={in_curs:'În curs',finalizat:'Finalizat',abandonat:'Abandonat'};
+  return `
+  <div class="toolbar">
+    <div style="flex:1;color:var(--muted);font-size:13.5px">Bună, <b style="color:var(--text)">${esc(instr.name)}</b>! Aici vezi cursanții tăi și salariul tău pe luna selectată.</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="color:var(--muted);font-size:13px">Luna:</span>
+      <select onchange="myZonePeriod.month=+this.value;render()">${MONTHS_FULL.map((mm,i)=>`<option value="${i}" ${i===m?'selected':''}>${mm}</option>`).join('')}</select>
+      <select onchange="myZonePeriod.year=+this.value;render()">${yrs.map(yy=>`<option ${yy===y?'selected':''}>${yy}</option>`).join('')}</select>
+    </div>
+  </div>
+  <div class="grid kpis" style="margin-bottom:18px">
+    <div class="card kpi green"><div class="label">Salariul tău · ${MONTHS_FULL[m]} ${y}</div><div class="value">${fmt(sal)}</div><div style="font-size:12px;margin-top:4px;color:${paidExp?'var(--success)':'var(--warning)'}">${paidExp?'✓ Plătit':'În așteptare'}</div></div>
+    <div class="card kpi"><div class="label">Încasări aduse luna asta</div><div class="value" style="color:var(--text)">${fmt(income)}</div></div>
+    <div class="card kpi"><div class="label">Procentul tău</div><div class="value" style="color:var(--text)">${Number(instr.percent||0)}%</div></div>
+    <div class="card kpi"><div class="label">Cursanți activi luna asta</div><div class="value" style="color:var(--text)">${withMonth.length}</div></div>
+  </div>
+  <div class="section-title">🎓 Cursanții mei</div>
+  ${!mine.length?`<div class="card empty"><div class="big">🎓</div>Niciun cursant asociat ție momentan.</div>`:`
+  <div class="table-wrap cards-mobile"><table>
+    <thead><tr><th>Cursant</th><th>Curs</th><th>Status</th><th class="num">Plătit în ${MONTHS_FULL[m]}</th><th class="num">Total plătit</th></tr></thead>
+    <tbody>${mine.slice().sort((a,b)=>monthPay(b.id)-monthPay(a.id)).map(s=>{const c=courseById(s.courseId)||{};const mp=monthPay(s.id);return `<tr>
+      <td><b>${esc(s.name)}</b>${s.phone?`<br><small style="color:var(--muted)">${esc(s.phone)}</small>`:''}</td>
+      <td><span class="badge b-gold">${esc(c.name||'—')}</span></td>
+      <td><span class="badge ${stB[s.status]||'b-gray'}">${stL[s.status]||s.status}</span></td>
+      <td class="num" style="color:${mp>0?'var(--success)':'var(--muted)'};font-weight:${mp>0?'700':'400'}">${mp>0?fmt(mp):'—'}</td>
+      <td class="num">${fmt(paidFor(s.id))}</td>
+    </tr>`}).join('')}
+    <tr style="border-top:2px solid var(--border)"><td colspan="3"><b>TOTAL</b> <small style="color:var(--muted)">· ${mine.length} cursanți</small></td><td class="num" style="color:var(--success);font-weight:800">${fmt(income)}</td><td class="num"><b>${fmt(mine.reduce((a,s)=>a+paidFor(s.id),0))}</b></td></tr>
+    </tbody>
+  </table></div>`}`;
+}
+
 /* ---------- SETTINGS ---------- */
-function viewSettingsEmployee(){
-  const cu=Auth.current();
+function viewSettingsLimited(){
+  const cu=Auth.current(); const isAdmin=Auth.isAdministrator();
   return `
   <div class="card">
     <div class="section-title" style="margin-top:0">👤 Contul meu</div>
-    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Autentificat ca <b style="color:var(--text)">${cu?esc(cu.user):'—'}</b> · <span class="badge b-blue">angajat</span></p>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Autentificat ca <b style="color:var(--text)">${cu?esc(cu.user):'—'}</b> · <span class="badge ${isAdmin?'b-gold':'b-blue'}">${cu?ROLE_LABEL[cu.role||'angajat']:''}</span></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="Auth.changePasswordModal()">🔑 Schimbă parola</button>
       <button class="btn btn-danger" onclick="Auth.logout()">🔒 Ieși din cont</button>
     </div>
   </div>
+  ${isAdmin?`<div class="card" style="margin-top:18px">
+    <div class="section-title" style="margin-top:0">💾 Export date</div>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Poți descărca o copie a datelor. Ștergerea, importul și gestiunea conturilor sunt rezervate proprietarului.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="exportExcel()">📑 Export Excel (.xlsx)</button>
+      <button class="btn btn-ghost" onclick="exportJSON()">⬇️ Backup (.json)</button>
+    </div>
+  </div>`:''}
   <div class="card" style="margin-top:18px">
     <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
-    <p style="color:var(--muted);font-size:13.5px"><b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și încasări.<br>Pentru rapoarte, cheltuieli și setări avansate, contactează administratorul.</p>
+    <p style="color:var(--muted);font-size:13.5px"><b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și finanțe.<br>Pentru setări avansate și ștergeri, contactează proprietarul.</p>
   </div>`;
 }
 function viewSettings(){
-  if(!Auth.isAdmin()) return viewSettingsEmployee();
+  if(!Auth.isOwner()) return viewSettingsLimited();
   const sz=(new Blob([localStorage.getItem(KEY)||'']).size/1024).toFixed(1);
   const syncOn=Sync.on();
   const last=syncOn&&Sync.cfg.lastSync?new Date(Sync.cfg.lastSync).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
@@ -1267,15 +1350,19 @@ function viewSettings(){
       <button class="btn btn-danger" onclick="Auth.logout()">🔒 Ieși din cont</button>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Utilizator</th><th>Rol</th><th>Creat</th><th></th></tr></thead>
-      <tbody>${Auth.cfg.users.map(u=>{const isMe=cu&&cu.user===u.user;const safe=esc(u.user).replace(/'/g,'');return `<tr>
+      <thead><tr><th>Utilizator</th><th>Rol</th><th>Profesor asociat</th><th></th></tr></thead>
+      <tbody>${Auth.cfg.users.map(u=>{const isMe=cu&&cu.user===u.user;const safe=esc(u.user).replace(/'/g,'');const ur=u.role||'proprietar';return `<tr>
         <td><b>${esc(u.user)}</b>${isMe?' <span class="badge b-green">tu</span>':''}</td>
-        <td><select onchange="Auth.setRole('${safe}',this.value)" ${isMe?'title="Propriul rol"':''}><option value="admin" ${(u.role||'admin')==='admin'?'selected':''}>Administrator</option><option value="angajat" ${u.role==='angajat'?'selected':''}>Angajat</option></select></td>
-        <td><small style="color:var(--muted)">${u.createdAt?new Date(u.createdAt).toLocaleDateString('ro-RO'):'—'}</small></td>
+        <td><select onchange="Auth.setRole('${safe}',this.value)">
+          <option value="proprietar" ${ur==='proprietar'?'selected':''}>Proprietar</option>
+          <option value="administrator" ${ur==='administrator'?'selected':''}>Administrator</option>
+          <option value="angajat" ${ur==='angajat'?'selected':''}>Angajat / Profesor</option>
+        </select></td>
+        <td>${ur==='angajat'?`<select onchange="Auth.setInstructor('${safe}',this.value)"><option value="">— niciunul —</option>${DB.instructors.map(i=>`<option value="${i.id}" ${u.instructorId===i.id?'selected':''}>${esc(i.name)}</option>`).join('')}</select>`:'<small style="color:var(--muted)">—</small>'}</td>
         <td><div class="row-actions">${isMe?'':`<button class="icon-btn danger" title="Șterge cont" onclick="Auth.delAccount('${safe}')">🗑️</button>`}</div></td>
       </tr>`}).join('')}</tbody>
     </table></div>
-    <div class="hint" style="margin-top:10px"><b>Angajat:</b> vede doar Cursanți, Încasări, Cursuri. <b>Administrator:</b> acces total (finanțe, rapoarte, setări).</div>`;})()}
+    <div class="hint" style="margin-top:10px"><b>Proprietar:</b> control total. <b>Administrator:</b> vede tot + adaugă/editează, fără ștergere. <b>Angajat/Profesor:</b> vede doar cursanții lui și salariul lui pe lună (asociază-l unui profesor).</div>`;})()}
   </div>
   <div class="card" style="margin-top:18px">
     <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
@@ -1295,7 +1382,7 @@ function download(name,content,type){
 }
 function exportJSON(){ download(`select-academy-backup-${todayISO()}.json`,JSON.stringify(DB,null,2),'application/json'); toast('Backup descărcat','ok'); }
 function importJSON(ev){
-  if(!Auth.isAdmin()){ toast('Doar administratorul poate importa','err'); ev.target.value=''; return; }
+  if(!Auth.isOwner()){ toast('Doar proprietarul poate importa','err'); ev.target.value=''; return; }
   const file=ev.target.files[0]; if(!file)return;
   const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result);
@@ -1382,7 +1469,7 @@ function exportExcel(){
 }
 const RESET_PHRASE='STERGE TOT';
 function resetAll(){
-  if(!Auth.isAdmin()) return toast('Doar administratorul poate șterge datele','err');
+  if(!Auth.isOwner()) return toast('Doar proprietarul poate șterge datele','err');
   const u=Auth.current();
   modal('⚠️ Șterge toate datele',`
     <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Această acțiune este <b style="color:var(--danger)">ireversibilă</b>. Se șterg toți cursanții, încasările, cheltuielile și cursurile de pe acest dispozitiv.</p>
@@ -1392,7 +1479,7 @@ function resetAll(){
   `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-danger" onclick="confirmReset()">Șterge definitiv</button>`);
 }
 async function confirmReset(){
-  if(!Auth.isAdmin()) return;
+  if(!Auth.isOwner()) return;
   const phrase=($('#rs_phrase').value||'').trim();
   if(phrase!==RESET_PHRASE) return toast('Scrie exact: '+RESET_PHRASE,'err');
   const u=Auth.current();
@@ -1594,16 +1681,20 @@ async function _authHash(pass,saltU8){
 }
 const Auth={
   cfg:{users:[]}, screen:'login',
-  load(){ try{ this.cfg=JSON.parse(localStorage.getItem(AUTH_KEY))||{users:[]}; }catch(e){ this.cfg={users:[]}; } if(!this.cfg.users) this.cfg.users=[]; this.cfg.users.forEach(u=>{ if(!u.role) u.role='admin'; }); },
+  load(){ try{ this.cfg=JSON.parse(localStorage.getItem(AUTH_KEY))||{users:[]}; }catch(e){ this.cfg={users:[]}; } if(!this.cfg.users) this.cfg.users=[]; this.cfg.users.forEach(u=>{ if(!u.role||u.role==='admin') u.role='proprietar'; }); },
   saveCfg(){ localStorage.setItem(AUTH_KEY,JSON.stringify(this.cfg)); },
   has(){ return this.cfg.users.length>0; },
   find(name){ const n=(name||'').trim().toLowerCase(); return this.cfg.users.find(u=>u.user.toLowerCase()===n); },
   current(){ const n=localStorage.getItem(SESS_KEY); return n?this.find(n):null; },
   authed(){ return !!this.current(); },
-  role(){ const u=this.current(); return u?(u.role||'admin'):null; },
-  isAdmin(){ return this.role()==='admin'; },
-  can(r){ const role=this.role(); if(!role) return true; return (ROLE_ROUTES[role]||ROLE_ROUTES.admin).includes(r); },
-  landing(){ return this.role()==='angajat'?'students':'dashboard'; },
+  role(){ const u=this.current(); return u?(u.role||'proprietar'):null; },
+  isOwner(){ return this.role()==='proprietar'; },
+  isAdministrator(){ return this.role()==='administrator'; },
+  canAdd(){ const r=this.role(); return r==='proprietar'||r==='administrator'; },
+  canDelete(){ return this.role()==='proprietar'; },
+  canManage(){ return this.role()==='proprietar'; },
+  can(r){ const role=this.role(); if(!role) return true; return (ROLE_ROUTES[role]||ROLE_ROUTES.proprietar).includes(r); },
+  landing(){ return this.role()==='angajat'?'myzone':'dashboard'; },
   boot(){ this.load();
     if(this.authed()){ PREVIEW=false; DB=load(); this.hide(); buildNav(); render(); startIdleTimer(); }
     else { PREVIEW=true; DB=buildDemoDB(); buildNav(); render(); this.screen=this.has()?'login':'register'; this.show(); }
@@ -1634,7 +1725,7 @@ const Auth={
     if(this.find(user)) return this.err('Există deja un cont cu acest nume.');
     if(pass.length<4) return this.err('Parola trebuie să aibă cel puțin 4 caractere.');
     if(pass!==pass2) return this.err('Parolele nu coincid.');
-    const role=this.has()?'angajat':'admin'; // primul cont = administrator
+    const role=this.has()?'angajat':'proprietar'; // primul cont = proprietar (drepturi depline)
     const salt=crypto.getRandomValues(new Uint8Array(16));
     this.cfg.users.push({user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
     this.saveCfg(); localStorage.setItem(SESS_KEY,user);
@@ -1649,31 +1740,45 @@ const Auth={
     if(window.Sync) Sync.pull();
   },
   logout(reason){ localStorage.removeItem(SESS_KEY); stopIdleTimer(); PREVIEW=true; DB=buildDemoDB(); this.screen=this.has()?'login':'register'; buildNav(); render(); this.show(); updateUserLine(); toast(reason||'Te-ai deconectat','ok'); },
-  addAccountModal(){ if(!this.isAdmin()) return; modal('Adaugă cont nou',`
+  addAccountModal(){ if(!this.isOwner()) return; const instrOpts=DB.instructors.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join(''); modal('Adaugă cont nou',`
       <div class="field"><label>Utilizator *</label><input id="na_user" placeholder="nume utilizator"></div>
       <div class="field"><label>Parolă *</label><input id="na_pass" type="password" placeholder="minim 4 caractere"></div>
-      <div class="field"><label>Rol</label><select id="na_role"><option value="angajat">Angajat (acces limitat)</option><option value="admin">Administrator (acces total)</option></select></div>
-      <div class="hint">Angajatul vede doar Cursanți, Încasări și Cursuri. Administratorul vede tot (finanțe, rapoarte, setări).</div>
+      <div class="field"><label>Rol</label><select id="na_role" onchange="document.getElementById('na_instr_wrap').style.display=this.value==='angajat'?'block':'none'">
+        <option value="angajat">Angajat / Profesor (vede doar zona lui)</option>
+        <option value="administrator">Administrator (vede tot + adaugă)</option>
+        <option value="proprietar">Proprietar (drepturi depline)</option>
+      </select></div>
+      <div class="field" id="na_instr_wrap"><label>Profesor asociat (pentru angajat)</label><select id="na_instr"><option value="">— niciunul —</option>${instrOpts}</select></div>
+      <div class="hint"><b>Angajat/Profesor:</b> vede doar cursanții lui și salariul lui pe lună. <b>Administrator:</b> vede tot și poate adăuga date, dar nu poate șterge. <b>Proprietar:</b> control total.</div>
     `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="Auth.addAccount()">Creează cont</button>`); },
   async addAccount(){
-    if(!this.isAdmin()) return;
+    if(!this.isOwner()) return;
     const user=($('#na_user').value||'').trim(), pass=$('#na_pass').value||'', role=$('#na_role').value||'angajat';
     if(user.length<2) return toast('Nume prea scurt','err');
     if(this.find(user)) return toast('Numele există deja','err');
     if(pass.length<4) return toast('Parolă prea scurtă (min 4)','err');
     const salt=crypto.getRandomValues(new Uint8Array(16));
-    this.cfg.users.push({user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
-    this.saveCfg(); closeModal(); render(); toast('Cont „'+user+'" creat ('+role+')','ok');
+    const rec={user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()};
+    if(role==='angajat'){ const iid=$('#na_instr')?$('#na_instr').value:''; if(iid){ const ins=instructorById(iid); rec.instructorId=iid; rec.instructorName=ins?ins.name:''; } }
+    this.cfg.users.push(rec);
+    this.saveCfg(); closeModal(); render(); toast('Cont „'+user+'" creat ('+ROLE_LABEL[role]+')','ok');
   },
   setRole(name,role){
-    if(!this.isAdmin()) return;
+    if(!this.isOwner()) return;
     const u=this.find(name); if(!u) return;
-    const admins=this.cfg.users.filter(x=>(x.role||'admin')==='admin');
-    if((u.role||'admin')==='admin' && role!=='admin' && admins.length<=1) return toast('Trebuie să rămână cel puțin un administrator','err');
-    u.role=role; this.saveCfg();
+    const owners=this.cfg.users.filter(x=>(x.role||'proprietar')==='proprietar');
+    if((u.role||'proprietar')==='proprietar' && role!=='proprietar' && owners.length<=1) return toast('Trebuie să rămână cel puțin un proprietar','err');
+    u.role=role; if(role!=='angajat'){ delete u.instructorId; delete u.instructorName; } this.saveCfg();
     const cur=this.current();
     if(cur&&cur.user===u.user){ buildNav(); route=this.can(route)?route:this.landing(); }
-    render(); toast('Rol actualizat: '+u.user+' → '+role,'ok');
+    render(); toast('Rol actualizat: '+u.user+' → '+ROLE_LABEL[role],'ok');
+  },
+  setInstructor(name,iid){
+    if(!this.isOwner()) return;
+    const u=this.find(name); if(!u) return;
+    if(iid){ const ins=instructorById(iid); u.instructorId=iid; u.instructorName=ins?ins.name:''; }
+    else { delete u.instructorId; delete u.instructorName; }
+    this.saveCfg(); render(); toast('Profesor asociat actualizat','ok');
   },
   changePasswordModal(){ modal('Schimbă parola',`
       <div class="field"><label>Parola actuală</label><input id="cp_cur" type="password"></div>
@@ -1691,11 +1796,11 @@ const Auth={
     closeModal(); toast('Parolă schimbată','ok');
   },
   delAccount(name){
-    if(!this.isAdmin()) return toast('Doar administratorul poate șterge conturi','err');
+    if(!this.isOwner()) return toast('Doar proprietarul poate șterge conturi','err');
     if(this.cfg.users.length<=1) return toast('Nu poți șterge ultimul cont','err');
     const tgt=this.find(name); if(!tgt) return;
-    const admins=this.cfg.users.filter(x=>(x.role||'admin')==='admin');
-    if((tgt.role||'admin')==='admin' && admins.length<=1) return toast('Trebuie să rămână cel puțin un administrator','err');
+    const owners=this.cfg.users.filter(x=>(x.role||'proprietar')==='proprietar');
+    if((tgt.role||'proprietar')==='proprietar' && owners.length<=1) return toast('Trebuie să rămână cel puțin un proprietar','err');
     const cur=this.current();
     confirmModal('Ștergi contul „'+name+'"?','Contul nu va mai putea fi folosit pentru autentificare.',()=>{
       this.cfg.users=this.cfg.users.filter(u=>u.user!==name); this.saveCfg();

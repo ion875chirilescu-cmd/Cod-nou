@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.0 · rolurile se salvează</div>
+      <div style="margin-top:4px">v3.1 · buton salvează rol</div>
     </div>
   </aside>
 
@@ -1354,18 +1354,18 @@ function viewSettings(){
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Utilizator</th><th>Rol</th><th>Profesor asociat</th><th></th></tr></thead>
-      <tbody>${Auth.cfg.users.map(u=>{const isMe=cu&&cu.user===u.user;const safe=esc(u.user).replace(/'/g,'');const ur=u.role||'proprietar';return `<tr>
+      <tbody>${Auth.cfg.users.map((u,idx)=>{const isMe=cu&&cu.user===u.user;const safe=esc(u.user).replace(/'/g,'');const ur=u.role||'proprietar';return `<tr>
         <td><b>${esc(u.user)}</b>${isMe?' <span class="badge b-green">tu</span>':''}</td>
-        <td><select onchange="Auth.setRole('${safe}',this.value)">
+        <td><select id="role_${idx}">
           <option value="proprietar" ${ur==='proprietar'?'selected':''}>Proprietar</option>
           <option value="administrator" ${ur==='administrator'?'selected':''}>Administrator</option>
           <option value="angajat" ${ur==='angajat'?'selected':''}>Angajat / Profesor</option>
         </select></td>
-        <td>${ur==='angajat'?`<select onchange="Auth.setInstructor('${safe}',this.value)"><option value="">— niciunul —</option>${DB.instructors.map(i=>`<option value="${i.id}" ${u.instructorId===i.id?'selected':''}>${esc(i.name)}</option>`).join('')}</select>`:'<small style="color:var(--muted)">—</small>'}</td>
-        <td><div class="row-actions"><button class="icon-btn" title="Resetează parola" onclick="Auth.resetUserPasswordModal('${safe}')">🔑</button>${isMe?'':`<button class="icon-btn danger" title="Șterge cont" onclick="Auth.delAccount('${safe}')">🗑️</button>`}</div></td>
+        <td><select id="instr_${idx}"><option value="">— profesor (pt. angajat) —</option>${DB.instructors.map(i=>`<option value="${i.id}" ${u.instructorId===i.id?'selected':''}>${esc(i.name)}</option>`).join('')}</select></td>
+        <td><div class="row-actions"><button class="btn btn-primary btn-sm" title="Salvează rolul" onclick="Auth.saveRow(${idx})">💾 Salvează</button><button class="icon-btn" title="Resetează parola" onclick="Auth.resetUserPasswordModal('${safe}')">🔑</button>${isMe?'':`<button class="icon-btn danger" title="Șterge cont" onclick="Auth.delAccount('${safe}')">🗑️</button>`}</div></td>
       </tr>`}).join('')}</tbody>
     </table></div>
-    <div class="hint" style="margin-top:10px"><b>Proprietar:</b> control total. <b>Administrator:</b> vede tot + adaugă/editează, fără ștergere. <b>Angajat/Profesor:</b> vede doar cursanții lui și salariul lui pe lună (asociază-l unui profesor).</div>`;})()}
+    <div class="hint" style="margin-top:10px">Alege rolul (și profesorul pentru angajat), apoi apasă <b>💾 Salvează</b> pe rândul respectiv. <b>Proprietar:</b> control total. <b>Administrator:</b> vede tot + adaugă/editează, fără ștergere. <b>Angajat/Profesor:</b> vede doar cursanții lui și salariul lui pe lună.</div>`;})()}
   </div>
   <div class="card" style="margin-top:18px">
     <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
@@ -1888,6 +1888,19 @@ const Auth={
     if(iid){ const ins=instructorById(iid); u.instructorId=iid; u.instructorName=ins?ins.name:''; }
     else { delete u.instructorId; delete u.instructorName; }
     this.commit(); render(); toast('Profesor asociat actualizat','ok');
+  },
+  saveRow(idx){
+    if(!this.isOwner()) return toast('Doar proprietarul poate schimba roluri','err');
+    const u=this.cfg.users[idx]; if(!u) return;
+    const rs=document.getElementById('role_'+idx); const role=rs?rs.value:(u.role||'proprietar');
+    const owners=this.cfg.users.filter(x=>(x.role||'proprietar')==='proprietar');
+    if((u.role||'proprietar')==='proprietar' && role!=='proprietar' && owners.length<=1) return toast('Trebuie să rămână cel puțin un proprietar','err');
+    u.role=role;
+    if(role==='angajat'){ const is=document.getElementById('instr_'+idx); const iid=is?is.value:''; if(iid){ const ins=instructorById(iid); u.instructorId=iid; u.instructorName=ins?ins.name:''; } else { delete u.instructorId; delete u.instructorName; } }
+    else { delete u.instructorId; delete u.instructorName; }
+    this.commit();
+    const cur=this.current(); if(cur&&cur.user===u.user){ buildNav(); route=this.can(route)?route:this.landing(); }
+    render(); toast('✅ Salvat: '+u.user+' → '+ROLE_LABEL[role],'ok');
   },
   changePasswordModal(){ modal('Schimbă parola',`
       <div class="field"><label>Parola actuală</label><input id="cp_cur" type="password"></div>

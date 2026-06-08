@@ -378,7 +378,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.9 · revendică proprietar</div>
+      <div style="margin-top:4px">v4.0 · etichetă rol corectă</div>
     </div>
   </aside>
 
@@ -2037,7 +2037,7 @@ const Auth={
 };
 function updateUserLine(){
   const u=Auth.current();
-  const roleL=u?(u.role==='angajat'?'angajat':'administrator'):'';
+  const roleL=u?(ROLE_LABEL[u.role||'proprietar']||'Proprietar'):'';
   const html=u?`👤 <b>${esc(u.user)}</b> <small style="opacity:.8">· ${roleL}</small> <a onclick="Auth.logout()">Ieși</a>`:'';
   document.querySelectorAll('.user-line').forEach(el=>el.innerHTML=html);
 }

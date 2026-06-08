@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.4 · cursanți pe luna selectată</div>
+      <div style="margin-top:4px">v3.5 · restanțe + telefon (angajat)</div>
     </div>
   </aside>
 
@@ -1237,9 +1237,15 @@ function viewMyZone(){
   const income=instrMonthIncome(instr,y,m);
   const sal=Math.round(income*Number(instr.percent||0)/100);
   const paidExp=DB.expenses.find(e=>e.salary&&e.instructorId===instr.id&&e.salaryMonth===ym);
+  const pct=Number(instr.percent||0);
   const monthPay=sid=>DB.payments.filter(p=>p.studentId===sid&&(p.date||'').slice(0,7)===ym).reduce((a,p)=>a+Number(p.amount||0),0);
-  // doar cursanții lui care au avut încasări în luna selectată (cei care contează la salariul lunii)
-  const mine=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(instr.name||'').toLowerCase() && monthPay(s.id)>0);
+  // toți cursanții lui (pentru restanțe + salariul viitor)
+  const allMine=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(instr.name||'').toLowerCase());
+  const restOf=s=>Math.max(0,Number(s.price||0)-paidFor(s.id));
+  const totalRest=allMine.reduce((a,s)=>a+restOf(s),0);
+  const futureSal=Math.round(totalRest*pct/100);
+  // cursanții lui care au avut încasări în luna selectată (cei care contează la salariul lunii)
+  const mine=allMine.filter(s=>monthPay(s.id)>0);
   const yrs=[]; for(let yy=now.getFullYear()-3;yy<=now.getFullYear()+1;yy++) yrs.push(yy);
   const stB={in_curs:'b-blue',finalizat:'b-green',abandonat:'b-gray'};
   const stL={in_curs:'În curs',finalizat:'Finalizat',abandonat:'Abandonat'};
@@ -1254,18 +1260,38 @@ function viewMyZone(){
   </div>
   <div class="grid kpis" style="margin-bottom:18px">
     <div class="card kpi green"><div class="label">Salariul tău · ${MONTHS_FULL[m]} ${y}</div><div class="value">${fmt(sal)}</div><div style="font-size:12px;margin-top:4px;color:${paidExp?'var(--success)':'var(--warning)'}">${paidExp?'✓ Plătit':'În așteptare'}</div></div>
+    <div class="card kpi"><div class="label">De primit din restanțe</div><div class="value" style="color:var(--text)">${fmt(futureSal)}</div><div style="font-size:12px;margin-top:4px;color:var(--muted)">când achită cursanții restul</div></div>
     <div class="card kpi"><div class="label">Cursanți în ${MONTHS_FULL[m]}</div><div class="value" style="color:var(--text)">${mine.length}</div></div>
   </div>
   <div class="section-title">🎓 Cursanții mei · ${MONTHS_FULL[m]} ${y}</div>
   ${!mine.length?`<div class="card empty"><div class="big">🎓</div>Niciun cursant în ${MONTHS_FULL[m]} ${y}.</div>`:`
   <div class="table-wrap cards-mobile"><table>
-    <thead><tr><th>Cursant</th><th>Curs</th><th>Status</th></tr></thead>
-    <tbody>${mine.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(s=>{const c=courseById(s.courseId)||{};return `<tr>
-      <td><b>${esc(s.name)}</b>${s.phone?`<br><small style="color:var(--muted)">${esc(s.phone)}</small>`:''}</td>
+    <thead><tr><th>Cursant</th><th>Curs</th><th>Status</th><th class="num">Achitat</th><th class="num">Rest</th><th></th></tr></thead>
+    <tbody>${mine.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(s=>{const c=courseById(s.courseId)||{};const paid=paidFor(s.id);const rest=restOf(s);return `<tr>
+      <td><b>${esc(s.name)}</b>${s.phone?`<br><small style="color:var(--muted)">📞 ${esc(s.phone)}</small>`:'<br><small style="color:var(--warning)">fără telefon</small>'}</td>
       <td><span class="badge b-gold">${esc(c.name||'—')}</span></td>
       <td><span class="badge ${stB[s.status]||'b-gray'}">${stL[s.status]||s.status}</span></td>
+      <td class="num" style="color:var(--success)">${fmt(paid)}</td>
+      <td class="num" style="color:${rest>0?'var(--warning)':'var(--success)'};font-weight:700">${rest>0?fmt(rest):'✓ achitat'}</td>
+      <td><div class="row-actions"><button class="icon-btn" title="Editează telefonul" onclick="editMyStudentPhone('${s.id}')">📞</button></div></td>
     </tr>`}).join('')}</tbody>
   </table></div>`}`;
+}
+function editMyStudentPhone(id){
+  const instr=myInstructor(); if(!instr) return;
+  const s=studentById(id); if(!s) return;
+  if((s.instructor||'').toLowerCase()!==(instr.name||'').toLowerCase()) return toast('Nu este cursantul tău','err');
+  modal('📞 Telefon · '+esc(s.name),`
+    <div class="field"><label>Număr de telefon</label><input id="mp_phone" value="${esc(s.phone||'')}" placeholder="07xx xxx xxx"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveMyStudentPhone('${id}')">Salvează</button>`);
+  setTimeout(()=>$('#mp_phone')&&$('#mp_phone').focus(),50);
+}
+function saveMyStudentPhone(id){
+  const instr=myInstructor(); if(!instr) return;
+  const s=studentById(id); if(!s) return;
+  if((s.instructor||'').toLowerCase()!==(instr.name||'').toLowerCase()) return toast('Nu este cursantul tău','err');
+  s.phone=($('#mp_phone').value||'').trim();
+  save(); closeModal(); render(); toast('Telefon salvat','ok');
 }
 
 /* ---------- SETTINGS ---------- */

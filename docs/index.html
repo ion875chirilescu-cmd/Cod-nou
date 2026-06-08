@@ -365,7 +365,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v2.0 · conturi (login)</div>
+      <div style="margin-top:4px">v2.1 · roluri + auto-logout</div>
     </div>
   </aside>
 
@@ -518,16 +518,22 @@ const NAV=[
   {id:'settings',  label:'Setări & backup',icon:'⚙️'},
 ];
 const MOBILE_NAV=['dashboard','students','payments','expenses','reports'];
+/* Rute permise pe rol. Angajatul NU vede finanțele sensibile (Tablou, Cheltuieli, Rapoarte, Profesori). */
+const ROLE_ROUTES={
+  admin:['dashboard','students','payments','expenses','reports','instructors','courses','settings'],
+  angajat:['students','payments','courses','settings']
+};
 let route='dashboard';
 
 function buildNav(){
-  const html=NAV.map(n=>`<button data-r="${n.id}" onclick="go('${n.id}')"><span class="ic">${n.icon}</span>${n.label}</button>`).join('');
+  const allowed=NAV.filter(n=>Auth.can(n.id));
+  const html=allowed.map(n=>`<button data-r="${n.id}" onclick="go('${n.id}')"><span class="ic">${n.icon}</span>${n.label}</button>`).join('');
   $('#navDesktop').innerHTML=html;
   $('#navDrawer').innerHTML=html;
-  $('#navMobile').innerHTML=MOBILE_NAV.map(id=>{const n=NAV.find(x=>x.id===id);return `<button data-r="${n.id}" onclick="go('${n.id}')"><span class="ic">${n.icon}</span>${n.label.split(' ')[0]}</button>`}).join('')
+  $('#navMobile').innerHTML=MOBILE_NAV.filter(id=>Auth.can(id)).map(id=>{const n=NAV.find(x=>x.id===id);return `<button data-r="${n.id}" onclick="go('${n.id}')"><span class="ic">${n.icon}</span>${n.label.split(' ')[0]}</button>`}).join('')
     +`<button onclick="toggleDrawer(true)"><span class="ic">⋯</span>Mai mult</button>`;
 }
-function go(r){ route=r; toggleDrawer(false); render(); }
+function go(r){ if(!Auth.can(r)){ toast('Nu ai acces la această secțiune','err'); return; } route=r; toggleDrawer(false); render(); }
 function toggleDrawer(open){ $('#drawer').classList.toggle('open', open); }
 function markActive(){
   document.querySelectorAll('[data-r]').forEach(b=>b.classList.toggle('active', b.dataset.r===route));
@@ -561,6 +567,7 @@ function setPeriodMode(m){ PERIOD.mode=m; render(); }
    RENDER
    ============================================================ */
 function render(){
+  if(Auth.authed() && !Auth.can(route)) route=Auth.landing();
   const titles={dashboard:'Tablou de bord',students:'Cursanți',payments:'Încasări',expenses:'Cheltuieli',reports:'Rapoarte financiare',courses:'Tipuri de cursuri',settings:'Setări & backup'};
   $('#pageTitle').textContent=titles[route]||'CRM';
   const showPeriod=(route==='dashboard'||route==='reports');
@@ -1189,7 +1196,24 @@ function delCourse(id){
 }
 
 /* ---------- SETTINGS ---------- */
+function viewSettingsEmployee(){
+  const cu=Auth.current();
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0">👤 Contul meu</div>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Autentificat ca <b style="color:var(--text)">${cu?esc(cu.user):'—'}</b> · <span class="badge b-blue">angajat</span></p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="Auth.changePasswordModal()">🔑 Schimbă parola</button>
+      <button class="btn btn-danger" onclick="Auth.logout()">🔒 Ieși din cont</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
+    <p style="color:var(--muted);font-size:13.5px"><b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și încasări.<br>Pentru rapoarte, cheltuieli și setări avansate, contactează administratorul.</p>
+  </div>`;
+}
 function viewSettings(){
+  if(!Auth.isAdmin()) return viewSettingsEmployee();
   const sz=(new Blob([localStorage.getItem(KEY)||'']).size/1024).toFixed(1);
   const syncOn=Sync.on();
   const last=syncOn&&Sync.cfg.lastSync?new Date(Sync.cfg.lastSync).toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
@@ -1244,13 +1268,15 @@ function viewSettings(){
       <button class="btn btn-danger" onclick="Auth.logout()">🔒 Ieși din cont</button>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Utilizator</th><th>Creat</th><th></th></tr></thead>
-      <tbody>${Auth.cfg.users.map(u=>`<tr>
-        <td><b>${esc(u.user)}</b>${cu&&cu.user===u.user?' <span class="badge b-green">tu</span>':''}</td>
+      <thead><tr><th>Utilizator</th><th>Rol</th><th>Creat</th><th></th></tr></thead>
+      <tbody>${Auth.cfg.users.map(u=>{const isMe=cu&&cu.user===u.user;const safe=esc(u.user).replace(/'/g,'');return `<tr>
+        <td><b>${esc(u.user)}</b>${isMe?' <span class="badge b-green">tu</span>':''}</td>
+        <td><select onchange="Auth.setRole('${safe}',this.value)" ${isMe?'title="Propriul rol"':''}><option value="admin" ${(u.role||'admin')==='admin'?'selected':''}>Administrator</option><option value="angajat" ${u.role==='angajat'?'selected':''}>Angajat</option></select></td>
         <td><small style="color:var(--muted)">${u.createdAt?new Date(u.createdAt).toLocaleDateString('ro-RO'):'—'}</small></td>
-        <td><div class="row-actions"><button class="icon-btn danger" title="Șterge cont" onclick="Auth.delAccount('${esc(u.user).replace(/'/g,'')}')">🗑️</button></div></td>
-      </tr>`).join('')}</tbody>
-    </table></div>`;})()}
+        <td><div class="row-actions">${isMe?'':`<button class="icon-btn danger" title="Șterge cont" onclick="Auth.delAccount('${safe}')">🗑️</button>`}</div></td>
+      </tr>`}).join('')}</tbody>
+    </table></div>
+    <div class="hint" style="margin-top:10px"><b>Angajat:</b> vede doar Cursanți, Încasări, Cursuri. <b>Administrator:</b> acces total (finanțe, rapoarte, setări).</div>`;})()}
   </div>
   <div class="card" style="margin-top:18px">
     <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
@@ -1551,13 +1577,17 @@ async function _authHash(pass,saltU8){
 }
 const Auth={
   cfg:{users:[]}, screen:'login',
-  load(){ try{ this.cfg=JSON.parse(localStorage.getItem(AUTH_KEY))||{users:[]}; }catch(e){ this.cfg={users:[]}; } if(!this.cfg.users) this.cfg.users=[]; },
+  load(){ try{ this.cfg=JSON.parse(localStorage.getItem(AUTH_KEY))||{users:[]}; }catch(e){ this.cfg={users:[]}; } if(!this.cfg.users) this.cfg.users=[]; this.cfg.users.forEach(u=>{ if(!u.role) u.role='admin'; }); },
   saveCfg(){ localStorage.setItem(AUTH_KEY,JSON.stringify(this.cfg)); },
   has(){ return this.cfg.users.length>0; },
   find(name){ const n=(name||'').trim().toLowerCase(); return this.cfg.users.find(u=>u.user.toLowerCase()===n); },
   current(){ const n=localStorage.getItem(SESS_KEY); return n?this.find(n):null; },
   authed(){ return !!this.current(); },
-  boot(){ this.load(); if(this.authed()){ this.hide(); } else { this.screen=this.has()?'login':'register'; this.show(); } updateUserLine(); },
+  role(){ const u=this.current(); return u?(u.role||'admin'):null; },
+  isAdmin(){ return this.role()==='admin'; },
+  can(r){ const role=this.role(); if(!role) return true; return (ROLE_ROUTES[role]||ROLE_ROUTES.admin).includes(r); },
+  landing(){ return this.role()==='angajat'?'students':'dashboard'; },
+  boot(){ this.load(); if(this.authed()){ this.hide(); startIdleTimer(); } else { this.screen=this.has()?'login':'register'; this.show(); } updateUserLine(); },
   show(){ const g=$('#authGate'); g.innerHTML=this.html(); g.classList.add('show'); setTimeout(()=>{const i=$('#au_user'); i&&i.focus();},60); },
   hide(){ const g=$('#authGate'); g.classList.remove('show'); g.innerHTML=''; },
   go(s){ this.screen=s; this.show(); },
@@ -1583,32 +1613,45 @@ const Auth={
     if(this.find(user)) return this.err('Există deja un cont cu acest nume.');
     if(pass.length<4) return this.err('Parola trebuie să aibă cel puțin 4 caractere.');
     if(pass!==pass2) return this.err('Parolele nu coincid.');
+    const role=this.has()?'angajat':'admin'; // primul cont = administrator
     const salt=crypto.getRandomValues(new Uint8Array(16));
-    this.cfg.users.push({user,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
+    this.cfg.users.push({user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
     this.saveCfg(); localStorage.setItem(SESS_KEY,user);
-    this.hide(); buildNav(); render(); toast('Cont creat. Bun venit, '+user+'!','ok');
+    this.hide(); route=this.landing(); buildNav(); render(); startIdleTimer(); toast('Cont creat. Bun venit, '+user+'!','ok');
   },
   async login(){
     const user=($('#au_user').value||'').trim(), pass=$('#au_pass').value||'';
     const u=this.find(user); if(!u) return this.err('Utilizator inexistent.');
     if(await _authHash(pass,_ub64(u.salt))!==u.hash) return this.err('Parolă greșită.');
     localStorage.setItem(SESS_KEY,u.user);
-    this.hide(); buildNav(); render(); toast('Bun venit, '+u.user+'!','ok');
+    this.hide(); route=this.landing(); buildNav(); render(); startIdleTimer(); toast('Bun venit, '+u.user+'!','ok');
   },
-  logout(){ localStorage.removeItem(SESS_KEY); this.screen=this.has()?'login':'register'; this.show(); updateUserLine(); toast('Te-ai deconectat','ok'); },
-  addAccountModal(){ modal('Adaugă cont nou',`
+  logout(reason){ localStorage.removeItem(SESS_KEY); stopIdleTimer(); this.screen=this.has()?'login':'register'; this.show(); updateUserLine(); toast(reason||'Te-ai deconectat','ok'); },
+  addAccountModal(){ if(!this.isAdmin()) return; modal('Adaugă cont nou',`
       <div class="field"><label>Utilizator *</label><input id="na_user" placeholder="nume utilizator"></div>
       <div class="field"><label>Parolă *</label><input id="na_pass" type="password" placeholder="minim 4 caractere"></div>
-      <div class="hint">Noul cont va putea accesa aceleași date pe acest dispozitiv.</div>
+      <div class="field"><label>Rol</label><select id="na_role"><option value="angajat">Angajat (acces limitat)</option><option value="admin">Administrator (acces total)</option></select></div>
+      <div class="hint">Angajatul vede doar Cursanți, Încasări și Cursuri. Administratorul vede tot (finanțe, rapoarte, setări).</div>
     `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="Auth.addAccount()">Creează cont</button>`); },
   async addAccount(){
-    const user=($('#na_user').value||'').trim(), pass=$('#na_pass').value||'';
+    if(!this.isAdmin()) return;
+    const user=($('#na_user').value||'').trim(), pass=$('#na_pass').value||'', role=$('#na_role').value||'angajat';
     if(user.length<2) return toast('Nume prea scurt','err');
     if(this.find(user)) return toast('Numele există deja','err');
     if(pass.length<4) return toast('Parolă prea scurtă (min 4)','err');
     const salt=crypto.getRandomValues(new Uint8Array(16));
-    this.cfg.users.push({user,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
-    this.saveCfg(); closeModal(); render(); toast('Cont „'+user+'" creat','ok');
+    this.cfg.users.push({user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
+    this.saveCfg(); closeModal(); render(); toast('Cont „'+user+'" creat ('+role+')','ok');
+  },
+  setRole(name,role){
+    if(!this.isAdmin()) return;
+    const u=this.find(name); if(!u) return;
+    const admins=this.cfg.users.filter(x=>(x.role||'admin')==='admin');
+    if((u.role||'admin')==='admin' && role!=='admin' && admins.length<=1) return toast('Trebuie să rămână cel puțin un administrator','err');
+    u.role=role; this.saveCfg();
+    const cur=this.current();
+    if(cur&&cur.user===u.user){ buildNav(); route=this.can(route)?route:this.landing(); }
+    render(); toast('Rol actualizat: '+u.user+' → '+role,'ok');
   },
   changePasswordModal(){ modal('Schimbă parola',`
       <div class="field"><label>Parola actuală</label><input id="cp_cur" type="password"></div>
@@ -1626,7 +1669,11 @@ const Auth={
     closeModal(); toast('Parolă schimbată','ok');
   },
   delAccount(name){
+    if(!this.isAdmin()) return toast('Doar administratorul poate șterge conturi','err');
     if(this.cfg.users.length<=1) return toast('Nu poți șterge ultimul cont','err');
+    const tgt=this.find(name); if(!tgt) return;
+    const admins=this.cfg.users.filter(x=>(x.role||'admin')==='admin');
+    if((tgt.role||'admin')==='admin' && admins.length<=1) return toast('Trebuie să rămână cel puțin un administrator','err');
     const cur=this.current();
     confirmModal('Ștergi contul „'+name+'"?','Contul nu va mai putea fi folosit pentru autentificare.',()=>{
       this.cfg.users=this.cfg.users.filter(u=>u.user!==name); this.saveCfg();
@@ -1637,9 +1684,23 @@ const Auth={
 };
 function updateUserLine(){
   const u=Auth.current();
-  const html=u?`👤 <b>${esc(u.user)}</b> <a onclick="Auth.logout()">Ieși</a>`:'';
+  const roleL=u?(u.role==='angajat'?'angajat':'administrator'):'';
+  const html=u?`👤 <b>${esc(u.user)}</b> <small style="opacity:.8">· ${roleL}</small> <a onclick="Auth.logout()">Ieși</a>`:'';
   document.querySelectorAll('.user-line').forEach(el=>el.innerHTML=html);
 }
+
+/* Deconectare automată după inactivitate (10 minute) */
+const IDLE_MS=10*60*1000;
+let _idleTimer=null;
+function resetIdleTimer(){
+  if(!Auth.authed()) return;
+  clearTimeout(_idleTimer);
+  _idleTimer=setTimeout(()=>{ if(Auth.authed()) Auth.logout('Deconectat automat după 10 min de inactivitate'); }, IDLE_MS);
+}
+function startIdleTimer(){ resetIdleTimer(); }
+function stopIdleTimer(){ clearTimeout(_idleTimer); _idleTimer=null; }
+['click','keydown','mousemove','touchstart','scroll'].forEach(ev=>
+  document.addEventListener(ev,()=>{ if(_idleTimer!==null||Auth.authed()) resetIdleTimer(); },{passive:true}));
 
 /* ============================================================
    INIT

@@ -327,6 +327,29 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
   .main{margin:0} .content{padding:0} body{background:#fff;color:#000}
   .card{border-color:#ccc;break-inside:avoid}
 }
+
+/* ===== Ecran de autentificare ===== */
+#authGate{position:fixed; inset:0; z-index:99999; display:none; align-items:center; justify-content:center;
+  padding:20px; background:radial-gradient(1200px 600px at 50% -10%, #20232b, var(--bg)); overflow:auto}
+#authGate.show{display:flex}
+.auth-card{width:100%; max-width:380px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:26px 22px; box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.auth-card .wordmark{font-size:22px; font-weight:800; letter-spacing:.5px}
+.auth-card .wordmark .sel{color:var(--primary)} .auth-card .wordmark .aca{color:var(--text)}
+.auth-card h2{font-size:17px; margin:18px 0 4px}
+.auth-card .sub{color:var(--muted); font-size:13px; margin-bottom:16px}
+.auth-card .field{margin-bottom:12px}
+.auth-card label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:5px}
+.auth-card input{width:100%; box-sizing:border-box; background:var(--surface-alt); border:1px solid var(--border);
+  border-radius:var(--r-sm); padding:11px 12px; color:var(--text); font-size:15px}
+.auth-card .btn{width:100%; justify-content:center; margin-top:6px}
+.auth-err{color:var(--danger); font-size:13px; margin:4px 0 8px; min-height:0}
+.auth-switch{text-align:center; margin-top:16px; font-size:13.5px; color:var(--muted)}
+.auth-switch a{color:var(--primary); cursor:pointer; font-weight:600}
+.auth-foot{text-align:center; margin-top:14px; font-size:11.5px; color:var(--muted)}
+.user-line{margin-bottom:8px; font-size:12.5px; color:var(--muted)}
+.user-line b{color:var(--text)}
+.user-line a{color:var(--primary); cursor:pointer; font-weight:600; margin-left:6px}
 </style>
 </head>
 <body>
@@ -339,9 +362,10 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     </div>
     <nav class="nav" id="navDesktop"></nav>
     <div class="nav-footer">
+      <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v1.9 · totaluri pe rezultate</div>
+      <div style="margin-top:4px">v2.0 · conturi (login)</div>
     </div>
   </aside>
 
@@ -370,8 +394,12 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
       <span class="tag">CRM · Barber</span>
     </div>
     <nav class="nav" id="navDrawer"></nav>
+    <div class="nav-footer"><div class="user-line" id="userLineDrawer"></div></div>
   </div>
 </div>
+
+<!-- Ecran de autentificare (login / înregistrare) -->
+<div id="authGate"></div>
 
 <!-- Modal + toast -->
 <div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
@@ -550,6 +578,7 @@ function render(){
   const fabRoutes=['dashboard','students','payments','expenses','instructors','courses'];
   const fab=$('#fab'); if(fab) fab.classList.toggle('hide', !fabRoutes.includes(route));
   if(route==='dashboard') drawDashboardChart();
+  if(typeof updateUserLine==='function') updateUserLine();
 }
 function quickAdd(){
   if(route==='payments') return openPaymentModal();
@@ -1206,6 +1235,24 @@ function viewSettings(){
     </div>
   </div>
   <div class="card" style="margin-top:18px">
+    <div class="section-title" style="margin-top:0">👤 Cont & securitate</div>
+    ${(()=>{const cu=Auth.current();return `
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Autentificat ca <b style="color:var(--text)">${cu?esc(cu.user):'—'}</b>. Conturile sunt o <b>blocare locală pe acest dispozitiv</b>; toate accesează aceleași date.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn btn-primary" onclick="Auth.addAccountModal()">＋ Cont nou</button>
+      <button class="btn btn-ghost" onclick="Auth.changePasswordModal()">🔑 Schimbă parola</button>
+      <button class="btn btn-danger" onclick="Auth.logout()">🔒 Ieși din cont</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Utilizator</th><th>Creat</th><th></th></tr></thead>
+      <tbody>${Auth.cfg.users.map(u=>`<tr>
+        <td><b>${esc(u.user)}</b>${cu&&cu.user===u.user?' <span class="badge b-green">tu</span>':''}</td>
+        <td><small style="color:var(--muted)">${u.createdAt?new Date(u.createdAt).toLocaleDateString('ro-RO'):'—'}</small></td>
+        <td><div class="row-actions"><button class="icon-btn danger" title="Șterge cont" onclick="Auth.delAccount('${esc(u.user).replace(/'/g,'')}')">🗑️</button></div></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;})()}
+  </div>
+  <div class="card" style="margin-top:18px">
     <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
     <p style="color:var(--muted);font-size:13.5px">
       <b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și finanțe pentru academia de barbering.<br>
@@ -1493,10 +1540,114 @@ async function syncTest(){
 }
 
 /* ============================================================
+   AUTH — conturi locale (login / înregistrare / logout)
+   ============================================================ */
+const AUTH_KEY='select_academy_auth_v1';
+const SESS_KEY='select_academy_session_v1';
+async function _authHash(pass,saltU8){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:saltU8,iterations:120000,hash:'SHA-256'},km,256);
+  return _b64(new Uint8Array(bits));
+}
+const Auth={
+  cfg:{users:[]}, screen:'login',
+  load(){ try{ this.cfg=JSON.parse(localStorage.getItem(AUTH_KEY))||{users:[]}; }catch(e){ this.cfg={users:[]}; } if(!this.cfg.users) this.cfg.users=[]; },
+  saveCfg(){ localStorage.setItem(AUTH_KEY,JSON.stringify(this.cfg)); },
+  has(){ return this.cfg.users.length>0; },
+  find(name){ const n=(name||'').trim().toLowerCase(); return this.cfg.users.find(u=>u.user.toLowerCase()===n); },
+  current(){ const n=localStorage.getItem(SESS_KEY); return n?this.find(n):null; },
+  authed(){ return !!this.current(); },
+  boot(){ this.load(); if(this.authed()){ this.hide(); } else { this.screen=this.has()?'login':'register'; this.show(); } updateUserLine(); },
+  show(){ const g=$('#authGate'); g.innerHTML=this.html(); g.classList.add('show'); setTimeout(()=>{const i=$('#au_user'); i&&i.focus();},60); },
+  hide(){ const g=$('#authGate'); g.classList.remove('show'); g.innerHTML=''; },
+  go(s){ this.screen=s; this.show(); },
+  html(){
+    const reg=this.screen==='register', firstEver=!this.has();
+    return `<div class="auth-card">
+      <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
+      <h2>${reg?(firstEver?'Creează contul tău':'Înregistrează un cont nou'):'Autentificare'}</h2>
+      <div class="sub">${reg?'Alege un nume de utilizator și o parolă.':'Intră cu numele de utilizator și parola.'}</div>
+      <div class="auth-err" id="au_err"></div>
+      <div class="field"><label>Utilizator</label><input id="au_user" autocomplete="username" placeholder="ex. ion" onkeydown="if(event.key==='Enter'){${reg?'Auth.register()':'Auth.login()'}}"></div>
+      <div class="field"><label>Parolă</label><input id="au_pass" type="password" autocomplete="${reg?'new-password':'current-password'}" placeholder="parola ta" onkeydown="if(event.key==='Enter'){${reg?'Auth.register()':'Auth.login()'}}"></div>
+      ${reg?`<div class="field"><label>Confirmă parola</label><input id="au_pass2" type="password" autocomplete="new-password" placeholder="repetă parola" onkeydown="if(event.key==='Enter'){Auth.register()}"></div>`:''}
+      <button class="btn btn-primary" onclick="${reg?'Auth.register()':'Auth.login()'}">${reg?'Creează cont':'Intră'}</button>
+      ${firstEver?'':`<div class="auth-switch">${reg?`Ai deja cont? <a onclick="Auth.go('login')">Autentifică-te</a>`:`Nu ai cont? <a onclick="Auth.go('register')">Creează cont nou</a>`}</div>`}
+      <div class="auth-foot">🔒 Blocare locală pe acest dispozitiv</div>
+    </div>`;
+  },
+  err(m){ const e=$('#au_err'); if(e) e.textContent=m||''; },
+  async register(){
+    const user=($('#au_user').value||'').trim(), pass=$('#au_pass').value||'', pass2=$('#au_pass2').value||'';
+    if(user.length<2) return this.err('Numele trebuie să aibă cel puțin 2 caractere.');
+    if(this.find(user)) return this.err('Există deja un cont cu acest nume.');
+    if(pass.length<4) return this.err('Parola trebuie să aibă cel puțin 4 caractere.');
+    if(pass!==pass2) return this.err('Parolele nu coincid.');
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    this.cfg.users.push({user,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
+    this.saveCfg(); localStorage.setItem(SESS_KEY,user);
+    this.hide(); buildNav(); render(); toast('Cont creat. Bun venit, '+user+'!','ok');
+  },
+  async login(){
+    const user=($('#au_user').value||'').trim(), pass=$('#au_pass').value||'';
+    const u=this.find(user); if(!u) return this.err('Utilizator inexistent.');
+    if(await _authHash(pass,_ub64(u.salt))!==u.hash) return this.err('Parolă greșită.');
+    localStorage.setItem(SESS_KEY,u.user);
+    this.hide(); buildNav(); render(); toast('Bun venit, '+u.user+'!','ok');
+  },
+  logout(){ localStorage.removeItem(SESS_KEY); this.screen=this.has()?'login':'register'; this.show(); updateUserLine(); toast('Te-ai deconectat','ok'); },
+  addAccountModal(){ modal('Adaugă cont nou',`
+      <div class="field"><label>Utilizator *</label><input id="na_user" placeholder="nume utilizator"></div>
+      <div class="field"><label>Parolă *</label><input id="na_pass" type="password" placeholder="minim 4 caractere"></div>
+      <div class="hint">Noul cont va putea accesa aceleași date pe acest dispozitiv.</div>
+    `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="Auth.addAccount()">Creează cont</button>`); },
+  async addAccount(){
+    const user=($('#na_user').value||'').trim(), pass=$('#na_pass').value||'';
+    if(user.length<2) return toast('Nume prea scurt','err');
+    if(this.find(user)) return toast('Numele există deja','err');
+    if(pass.length<4) return toast('Parolă prea scurtă (min 4)','err');
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    this.cfg.users.push({user,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
+    this.saveCfg(); closeModal(); render(); toast('Cont „'+user+'" creat','ok');
+  },
+  changePasswordModal(){ modal('Schimbă parola',`
+      <div class="field"><label>Parola actuală</label><input id="cp_cur" type="password"></div>
+      <div class="field"><label>Parola nouă</label><input id="cp_new" type="password"></div>
+      <div class="field"><label>Confirmă parola nouă</label><input id="cp_new2" type="password"></div>
+    `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="Auth.changePassword()">Salvează</button>`); },
+  async changePassword(){
+    const u=this.current(); if(!u) return;
+    const cur=$('#cp_cur').value||'', np=$('#cp_new').value||'', np2=$('#cp_new2').value||'';
+    if(await _authHash(cur,_ub64(u.salt))!==u.hash) return toast('Parola actuală e greșită','err');
+    if(np.length<4) return toast('Parola nouă: minim 4 caractere','err');
+    if(np!==np2) return toast('Parolele nu coincid','err');
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    u.salt=_b64(salt); u.hash=await _authHash(np,salt); this.saveCfg();
+    closeModal(); toast('Parolă schimbată','ok');
+  },
+  delAccount(name){
+    if(this.cfg.users.length<=1) return toast('Nu poți șterge ultimul cont','err');
+    const cur=this.current();
+    confirmModal('Ștergi contul „'+name+'"?','Contul nu va mai putea fi folosit pentru autentificare.',()=>{
+      this.cfg.users=this.cfg.users.filter(u=>u.user!==name); this.saveCfg();
+      if(cur&&cur.user===name){ localStorage.removeItem(SESS_KEY); this.boot(); } else { render(); }
+      toast('Cont șters','ok');
+    });
+  }
+};
+function updateUserLine(){
+  const u=Auth.current();
+  const html=u?`👤 <b>${esc(u.user)}</b> <a onclick="Auth.logout()">Ieși</a>`:'';
+  document.querySelectorAll('.user-line').forEach(el=>el.innerHTML=html);
+}
+
+/* ============================================================
    INIT
    ============================================================ */
+Auth.load();
 buildNav(); renderStamp(); Sync.load(); render();
 Sync.init();
+Auth.boot();
 window.addEventListener('focus',()=>Sync.pull());
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) Sync.pull(); });
 </script>

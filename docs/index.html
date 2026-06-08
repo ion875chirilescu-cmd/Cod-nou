@@ -341,7 +341,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     <div class="nav-footer">
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v1.8 · căutare în fiecare mapă</div>
+      <div style="margin-top:4px">v1.9 · totaluri pe rezultate</div>
     </div>
   </aside>
 
@@ -733,7 +733,9 @@ function studentsTable(list){
           <button class="icon-btn" title="Editează" onclick="openStudentModal('${s.id}')">✏️</button>
           <button class="icon-btn danger" title="Șterge" onclick="delStudent('${s.id}')">🗑️</button>
         </div></td>
-      </tr>`;}).join('')}</tbody>
+      </tr>`;}).join('')}
+    ${(()=>{const tP=list.reduce((a,s)=>a+Number(s.price||0),0);const tA=list.reduce((a,s)=>a+paidFor(s.id),0);const tR=list.reduce((a,s)=>a+Math.max(0,Number(s.price||0)-paidFor(s.id)),0);return `<tr style="border-top:2px solid var(--border)"><td colspan="4"><b>TOTAL</b> ${(studentSearch||studentFilter!=='all')?'<small style="color:var(--muted)">(rezultate filtrate)</small>':''} <small style="color:var(--muted)">· ${list.length} cursant${list.length===1?'':'i'}</small></td><td class="num"><b>${fmt(tP)}</b></td><td class="num" style="color:var(--success)"><b>${fmt(tA)}</b></td><td>${tR>0?`<small style="color:var(--warning)">rest ${fmt(tR)}</small>`:''}</td><td></td></tr>`;})()}
+    </tbody>
   </table></div>`;
 }
 function openStudentModal(id){
@@ -852,6 +854,7 @@ function viewPayments(){
 function rerenderPayments(){ const el=$('#paymentsList'); if(el) el.innerHTML=paymentsTable(paymentList()); }
 function paymentsTable(list){
   if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio încasare găsită pentru „${esc(paymentSearch)}”.</div>`;
+  const sum=list.reduce((a,p)=>a+Number(p.amount||0),0);
   return `<div class="table-wrap cards-mobile t-payments"><table>
     <thead><tr><th>Data</th><th>Cursant</th><th>Curs</th><th>Metodă</th><th>Notă</th><th class="num">Sumă</th><th></th></tr></thead>
     <tbody>${list.map(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;return `<tr>
@@ -862,7 +865,9 @@ function paymentsTable(list){
       <td><small style="color:var(--muted)">${esc(p.note||'')}</small></td>
       <td class="num" style="color:var(--success);font-weight:700">${fmt(p.amount)}</td>
       <td><div class="row-actions"><button class="icon-btn" title="Editează" onclick="openPaymentModal(null,'${p.id}')">✏️</button><button class="icon-btn danger" title="Șterge" onclick="delPayment('${p.id}')">🗑️</button></div></td>
-    </tr>`}).join('')}</tbody>
+    </tr>`}).join('')}
+    <tr style="border-top:2px solid var(--border)"><td colspan="5"><b>TOTAL</b> ${paymentSearch?'<small style="color:var(--muted)">(rezultate căutare)</small>':''} <small style="color:var(--muted)">· ${list.length} ${list.length===1?'încasare':'încasări'}</small></td><td class="num" style="color:var(--success);font-weight:800">${fmt(sum)}</td><td></td></tr>
+    </tbody>
   </table></div>`;
 }
 function delPayment(id){
@@ -912,6 +917,7 @@ function viewExpenses(){
 function rerenderExpenses(){ const el=$('#expensesList'); if(el) el.innerHTML=expensesTable(expenseList()); }
 function expensesTable(list){
   if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio cheltuială găsită pentru „${esc(expenseSearch)}”.</div>`;
+  const sum=list.reduce((a,e)=>a+Number(e.amount||0),0);
   return `<div class="table-wrap cards-mobile t-expenses"><table>
     <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Sumă</th><th></th></tr></thead>
     <tbody>${list.map(e=>`<tr>
@@ -920,7 +926,9 @@ function expensesTable(list){
       <td><small style="color:var(--muted)">${esc(e.description||'')}</small></td>
       <td class="num" style="color:var(--danger);font-weight:700">${fmt(e.amount)}</td>
       <td><div class="row-actions"><button class="icon-btn" onclick="openExpenseModal('${e.id}')">✏️</button><button class="icon-btn danger" onclick="delExpense('${e.id}')">🗑️</button></div></td>
-    </tr>`).join('')}</tbody>
+    </tr>`).join('')}
+    <tr style="border-top:2px solid var(--border)"><td colspan="3"><b>TOTAL</b> ${expenseSearch?'<small style="color:var(--muted)">(rezultate căutare)</small>':''} <small style="color:var(--muted)">· ${list.length} ${list.length===1?'cheltuială':'cheltuieli'}</small></td><td class="num" style="color:var(--danger);font-weight:800">${fmt(sum)}</td><td></td></tr>
+    </tbody>
   </table></div>`;
 }
 function delExpense(id){ confirmModal('Ștergi această cheltuială?','',()=>{DB.expenses=DB.expenses.filter(e=>e.id!==id);save();render();toast('Cheltuială ștearsă','ok');}); }
@@ -1123,7 +1131,8 @@ function coursesGrid(list){
         <div style="font-size:22px;font-weight:800;color:${c.color};margin-top:12px">${fmt(c.defaultPrice)}</div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:4px">🎓 ${cnt} cursant${cnt===1?'':'i'}</div>
       </div>`}).join('')}
-  </div>`;
+  </div>
+  <div style="color:var(--muted);font-size:13px;margin-top:12px"><b>TOTAL:</b> ${list.length} ${list.length===1?'tip de curs':'tipuri de curs'}${courseSearch?' (rezultate căutare)':''} · ${list.reduce((a,c)=>a+DB.students.filter(s=>s.courseId===c.id).length,0)} cursanți</div>`;
 }
 function openCourseModal(id){
   const c=id?courseById(id):null;

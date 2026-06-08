@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.2 · link conectare dispozitiv</div>
+      <div style="margin-top:4px">v3.3 · angajat vede doar salariul</div>
     </div>
   </aside>
 
@@ -1238,14 +1238,12 @@ function viewMyZone(){
   const sal=Math.round(income*Number(instr.percent||0)/100);
   const paidExp=DB.expenses.find(e=>e.salary&&e.instructorId===instr.id&&e.salaryMonth===ym);
   const mine=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(instr.name||'').toLowerCase());
-  const monthPay=sid=>DB.payments.filter(p=>p.studentId===sid&&(p.date||'').slice(0,7)===ym).reduce((a,p)=>a+Number(p.amount||0),0);
-  const withMonth=mine.filter(s=>monthPay(s.id)>0);
   const yrs=[]; for(let yy=now.getFullYear()-3;yy<=now.getFullYear()+1;yy++) yrs.push(yy);
   const stB={in_curs:'b-blue',finalizat:'b-green',abandonat:'b-gray'};
   const stL={in_curs:'În curs',finalizat:'Finalizat',abandonat:'Abandonat'};
   return `
   <div class="toolbar">
-    <div style="flex:1;color:var(--muted);font-size:13.5px">Bună, <b style="color:var(--text)">${esc(instr.name)}</b>! Aici vezi cursanții tăi și salariul tău pe luna selectată.</div>
+    <div style="flex:1;color:var(--muted);font-size:13.5px">Bună, <b style="color:var(--text)">${esc(instr.name)}</b>! Aici vezi salariul tău și cursanții tăi pe luna selectată.</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span style="color:var(--muted);font-size:13px">Luna:</span>
       <select onchange="myZonePeriod.month=+this.value;render()">${MONTHS_FULL.map((mm,i)=>`<option value="${i}" ${i===m?'selected':''}>${mm}</option>`).join('')}</select>
@@ -1254,23 +1252,17 @@ function viewMyZone(){
   </div>
   <div class="grid kpis" style="margin-bottom:18px">
     <div class="card kpi green"><div class="label">Salariul tău · ${MONTHS_FULL[m]} ${y}</div><div class="value">${fmt(sal)}</div><div style="font-size:12px;margin-top:4px;color:${paidExp?'var(--success)':'var(--warning)'}">${paidExp?'✓ Plătit':'În așteptare'}</div></div>
-    <div class="card kpi"><div class="label">Încasări aduse luna asta</div><div class="value" style="color:var(--text)">${fmt(income)}</div></div>
-    <div class="card kpi"><div class="label">Procentul tău</div><div class="value" style="color:var(--text)">${Number(instr.percent||0)}%</div></div>
-    <div class="card kpi"><div class="label">Cursanți activi luna asta</div><div class="value" style="color:var(--text)">${withMonth.length}</div></div>
+    <div class="card kpi"><div class="label">Cursanții mei</div><div class="value" style="color:var(--text)">${mine.length}</div></div>
   </div>
   <div class="section-title">🎓 Cursanții mei</div>
   ${!mine.length?`<div class="card empty"><div class="big">🎓</div>Niciun cursant asociat ție momentan.</div>`:`
   <div class="table-wrap cards-mobile"><table>
-    <thead><tr><th>Cursant</th><th>Curs</th><th>Status</th><th class="num">Plătit în ${MONTHS_FULL[m]}</th><th class="num">Total plătit</th></tr></thead>
-    <tbody>${mine.slice().sort((a,b)=>monthPay(b.id)-monthPay(a.id)).map(s=>{const c=courseById(s.courseId)||{};const mp=monthPay(s.id);return `<tr>
+    <thead><tr><th>Cursant</th><th>Curs</th><th>Status</th></tr></thead>
+    <tbody>${mine.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(s=>{const c=courseById(s.courseId)||{};return `<tr>
       <td><b>${esc(s.name)}</b>${s.phone?`<br><small style="color:var(--muted)">${esc(s.phone)}</small>`:''}</td>
       <td><span class="badge b-gold">${esc(c.name||'—')}</span></td>
       <td><span class="badge ${stB[s.status]||'b-gray'}">${stL[s.status]||s.status}</span></td>
-      <td class="num" style="color:${mp>0?'var(--success)':'var(--muted)'};font-weight:${mp>0?'700':'400'}">${mp>0?fmt(mp):'—'}</td>
-      <td class="num">${fmt(paidFor(s.id))}</td>
-    </tr>`}).join('')}
-    <tr style="border-top:2px solid var(--border)"><td colspan="3"><b>TOTAL</b> <small style="color:var(--muted)">· ${mine.length} cursanți</small></td><td class="num" style="color:var(--success);font-weight:800">${fmt(income)}</td><td class="num"><b>${fmt(mine.reduce((a,s)=>a+paidFor(s.id),0))}</b></td></tr>
-    </tbody>
+    </tr>`}).join('')}</tbody>
   </table></div>`}`;
 }
 

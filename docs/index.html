@@ -378,7 +378,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v4.0 · etichetă rol corectă</div>
+      <div style="margin-top:4px">v4.1 · login simplificat</div>
     </div>
   </aside>
 
@@ -1819,9 +1819,7 @@ const Auth={
       ${reg?`<div class="field"><label>Confirmă parola</label><input id="au_pass2" type="password" autocomplete="new-password" placeholder="repetă parola" onkeydown="if(event.key==='Enter'){Auth.register()}"></div>`:''}
       <button class="btn btn-primary" onclick="${reg?'Auth.register()':'Auth.login()'}">${reg?'Creează cont':'Intră'}</button>
       <div class="auth-switch">${reg?`Ai deja cont? <a onclick="Auth.go('login')">Autentifică-te</a>`:`Nu ai cont? <a onclick="Auth.go('register')">Creează cont nou</a>`}</div>
-      <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('connect')">📲 Dispozitiv nou? Conectează la CRM-ul tău</a></div>
       <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('recover')">🔑 Ai uitat parola? Recuperare cont</a></div>
-      <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('claim')">👑 Sunt proprietarul (revendică drepturile)</a></div>
       <div class="auth-foot">🔒 Blocare locală pe acest dispozitiv</div>
     </div>`;
   },

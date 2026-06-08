@@ -378,7 +378,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.8 · conectare dispozitiv (admin)</div>
+      <div style="margin-top:4px">v3.9 · revendică proprietar</div>
     </div>
   </aside>
 
@@ -1805,6 +1805,7 @@ const Auth={
   go(s){ this.screen=s; this.show(); },
   html(){
     if(this.screen==='connect') return this.htmlConnect();
+    if(this.screen==='claim') return this.htmlClaim();
     if(this.screen==='recover') return this.htmlRecover();
     if(this.screen==='recoverPick') return this.htmlRecoverPick();
     const reg=this.screen==='register', firstEver=!this.has();
@@ -1820,6 +1821,7 @@ const Auth={
       <div class="auth-switch">${reg?`Ai deja cont? <a onclick="Auth.go('login')">Autentifică-te</a>`:`Nu ai cont? <a onclick="Auth.go('register')">Creează cont nou</a>`}</div>
       <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('connect')">📲 Dispozitiv nou? Conectează la CRM-ul tău</a></div>
       <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('recover')">🔑 Ai uitat parola? Recuperare cont</a></div>
+      <div class="auth-switch" style="margin-top:8px"><a onclick="Auth.go('claim')">👑 Sunt proprietarul (revendică drepturile)</a></div>
       <div class="auth-foot">🔒 Blocare locală pe acest dispozitiv</div>
     </div>`;
   },
@@ -1845,6 +1847,35 @@ const Auth={
       if(this.has()){ DB=buildDemoDB(); this.screen='login'; this.show(); this.err(''); toast('Conectat ✓ Acum autentifică-te.','ok'); }
       else { this.err('Spațiul nu conține conturi. Creează primul cont.'); }
     }catch(e){ this.err(e&&e.message?e.message:'Eroare la conectare'); }
+  },
+  htmlClaim(){
+    return `<div class="auth-card">
+      <div class="wordmark"><span class="sel">SELECT</span> <span class="aca">ACADEMY</span></div>
+      <h2>👑 Revendică drepturi de proprietar</h2>
+      <div class="sub">Dacă ești proprietarul, folosește <b>tokenul GitHub + parola de sincronizare</b> (cheile pe care le deții) ca să-ți setezi contul ca <b>Proprietar</b>.</div>
+      <div class="auth-err" id="au_err"></div>
+      <div class="field"><label>Token GitHub</label><input id="cl_t" type="password" placeholder="ghp_..."></div>
+      <div class="field"><label>Parolă de sincronizare</label><input id="cl_p" type="password" placeholder="parola de criptare a datelor"></div>
+      <div class="field"><label>Contul care devine Proprietar</label><input id="cl_u" autocomplete="username" placeholder="ex. ion001160"></div>
+      <button class="btn btn-primary" onclick="Auth.claimOwner()">Fă-mă Proprietar</button>
+      <div class="auth-switch" style="margin-top:14px"><a onclick="Auth.go('login')">← Înapoi la autentificare</a></div>
+    </div>`;
+  },
+  async claimOwner(){
+    const t=($('#cl_t').value||'').trim(), p=$('#cl_p').value||'', who=($('#cl_u').value||'').trim();
+    if(!t||!p||!who) return this.err('Completează toate câmpurile.');
+    this.err('Se conectează la cloud…');
+    try{
+      await Sync.connect(t,p,true);   // descarcă conturile + datele
+      this.load();
+      const u=this.find(who);
+      if(!u){ this.err('Nu există contul „'+who+'". Verifică numele exact.'); return; }
+      u.role='proprietar'; this.cfg.authUpdatedAt=Date.now(); this.saveCfg();
+      try{ await _syncPushNow(); }catch(e){}   // urcă rolul în cloud ca să rămână permanent
+      DB=buildDemoDB(); this.screen='login'; this.show(); this.err('');
+      toast('„'+who+'" este acum Proprietar. Autentifică-te.','ok');
+      setTimeout(()=>{ const el=$('#au_user'); if(el) el.value=who; },80);
+    }catch(e){ this.err(e&&e.message?e.message:'Eroare la revendicare'); }
   },
   htmlRecover(){
     return `<div class="auth-card">

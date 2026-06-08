@@ -142,6 +142,7 @@ a{color:var(--primary); text-decoration:none}
   flex:1; min-width:160px; background:var(--surface-alt); border:1px solid var(--border);
   border-radius:var(--r-sm); padding:9px 12px; color:var(--text);
 }
+.search.block{display:block; width:100%; box-sizing:border-box; margin-bottom:14px; flex:none}
 .table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:var(--r-lg); background:var(--surface)}
 table{width:100%; border-collapse:collapse; min-width:560px}
 th,td{padding:12px 14px; text-align:left; font-size:13.7px; border-bottom:1px solid var(--border); white-space:nowrap}
@@ -340,7 +341,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
     <div class="nav-footer">
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v1.7 · export Excel aranjat</div>
+      <div style="margin-top:4px">v1.8 · căutare în fiecare mapă</div>
     </div>
   </aside>
 
@@ -689,24 +690,27 @@ function rowAct(ic,title,sub,color){
 
 /* ---------- STUDENTS ---------- */
 let studentFilter='all', studentSearch='';
-function viewStudents(){
+function studentList(){
   let list=DB.students.slice().sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||'')||(b.createdAt||0)-(a.createdAt||0));
   if(studentFilter!=='all') list=list.filter(s=>s.status===studentFilter);
-  if(studentSearch){const q=studentSearch.toLowerCase();list=list.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.phone||'').includes(q)||((courseById(s.courseId)||{}).name||'').toLowerCase().includes(q));}
+  if(studentSearch){const q=studentSearch.toLowerCase();list=list.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.phone||'').includes(q)||((courseById(s.courseId)||{}).name||'').toLowerCase().includes(q)||(s.notes||'').toLowerCase().includes(q));}
+  return list;
+}
+function viewStudents(){
   const counts={all:DB.students.length,in_curs:0,finalizat:0,abandonat:0};
   DB.students.forEach(s=>counts[s.status]=(counts[s.status]||0)+1);
-
   return `
   <div class="toolbar">
-    <input class="search" placeholder="🔎 Caută după nume, telefon, curs…" value="${esc(studentSearch)}" oninput="studentSearch=this.value;rerenderStudents()">
+    <input class="search" placeholder="🔎 Caută după nume, telefon, curs, notițe…" value="${esc(studentSearch)}" oninput="studentSearch=this.value;rerenderStudentsTable()">
     <button class="btn btn-primary" onclick="openStudentModal()">＋ Cursant nou</button>
   </div>
   <div class="pill-filter" style="margin-bottom:14px">
     ${[['all','Toți'],['in_curs','În curs'],['finalizat','Finalizați'],['abandonat','Abandonați']].map(([k,l])=>`<button class="${studentFilter===k?'active':''}" onclick="studentFilter='${k}';rerenderStudents()">${l} <b>${counts[k]||0}</b></button>`).join('')}
   </div>
-  <div id="studentsTable">${studentsTable(list)}</div>`;
+  <div id="studentsTable">${studentsTable(studentList())}</div>`;
 }
 function rerenderStudents(){ $('#studentsTable')&&($('#view').innerHTML=viewStudents(),markActive()); }
+function rerenderStudentsTable(){ const el=$('#studentsTable'); if(el) el.innerHTML=studentsTable(studentList()); }
 function studentsTable(list){
   if(!list.length) return `<div class="card empty"><div class="big">🎓</div>Niciun cursant ${studentFilter!=='all'||studentSearch?'pentru filtrul curent':'încă'}.<br>${!studentSearch&&studentFilter==='all'?'<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openStudentModal()">＋ Adaugă primul cursant</button>':''}</div>`;
   return `<div class="table-wrap cards-mobile t-students"><table>
@@ -828,16 +832,27 @@ function savePayment(payId){
   DB.payments.push({id:uid(),studentId,amount,date:$('#p_date').value||todayISO(),method:$('#p_method').value,note:$('#p_note').value.trim(),createdAt:Date.now()});
   save(); closeModal(); render(); toast('Încasare înregistrată','ok');
 }
+let paymentSearch='';
+function paymentList(){
+  let list=DB.payments.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+  if(paymentSearch){const q=paymentSearch.toLowerCase();list=list.filter(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;return (s?s.name:'').toLowerCase().includes(q)||(c?c.name:'').toLowerCase().includes(q)||(p.method||'').toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q)||(p.date||'').includes(q);});}
+  return list;
+}
 function viewPayments(){
-  const list=DB.payments.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
-  const total=list.reduce((a,p)=>a+Number(p.amount||0),0);
+  const total=DB.payments.reduce((a,p)=>a+Number(p.amount||0),0);
   return `
   <div class="toolbar">
     <div class="card kpi green" style="padding:12px 18px;flex:1;min-width:180px"><div class="label">Total încasări (istoric)</div><div class="value" style="font-size:22px">${fmt(total)}</div></div>
     <button class="btn btn-primary" onclick="openPaymentModal()" ${DB.students.length?'':'disabled style=opacity:.5'}>＋ Încasare</button>
   </div>
-  ${!list.length?`<div class="card empty"><div class="big">💰</div>Nicio încasare înregistrată.</div>`:`
-  <div class="table-wrap cards-mobile t-payments"><table>
+  ${!DB.payments.length?`<div class="card empty"><div class="big">💰</div>Nicio încasare înregistrată.</div>`:`
+  <input class="search block" placeholder="🔎 Caută după cursant, curs, metodă, notă, dată…" value="${esc(paymentSearch)}" oninput="paymentSearch=this.value;rerenderPayments()">
+  <div id="paymentsList">${paymentsTable(paymentList())}</div>`}`;
+}
+function rerenderPayments(){ const el=$('#paymentsList'); if(el) el.innerHTML=paymentsTable(paymentList()); }
+function paymentsTable(list){
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio încasare găsită pentru „${esc(paymentSearch)}”.</div>`;
+  return `<div class="table-wrap cards-mobile t-payments"><table>
     <thead><tr><th>Data</th><th>Cursant</th><th>Curs</th><th>Metodă</th><th>Notă</th><th class="num">Sumă</th><th></th></tr></thead>
     <tbody>${list.map(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;return `<tr>
       <td>${esc(p.date)}</td>
@@ -848,7 +863,7 @@ function viewPayments(){
       <td class="num" style="color:var(--success);font-weight:700">${fmt(p.amount)}</td>
       <td><div class="row-actions"><button class="icon-btn" title="Editează" onclick="openPaymentModal(null,'${p.id}')">✏️</button><button class="icon-btn danger" title="Șterge" onclick="delPayment('${p.id}')">🗑️</button></div></td>
     </tr>`}).join('')}</tbody>
-  </table></div>`}`;
+  </table></div>`;
 }
 function delPayment(id){
   confirmModal('Ștergi această încasare?','',()=>{DB.payments=DB.payments.filter(p=>p.id!==id);save();render();toast('Încasare ștearsă','ok');});
@@ -874,10 +889,15 @@ function saveExpense(id){
   else{data.id=uid();data.createdAt=Date.now();DB.expenses.push(data);}
   save(); closeModal(); render(); toast(id?'Cheltuială actualizată':'Cheltuială adăugată','ok');
 }
+let expenseSearch='';
+function expenseList(){
+  let list=DB.expenses.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(expenseSearch){const q=expenseSearch.toLowerCase();list=list.filter(e=>(e.description||'').toLowerCase().includes(q)||(e.category||'').toLowerCase().includes(q)||(e.date||'').includes(q));}
+  return list;
+}
 function viewExpenses(){
-  const list=DB.expenses.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const total=list.reduce((a,e)=>a+Number(e.amount||0),0);
-  const byCat={}; list.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0));
+  const total=DB.expenses.reduce((a,e)=>a+Number(e.amount||0),0);
+  const byCat={}; DB.expenses.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0));
   const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
   return `
   <div class="toolbar">
@@ -885,8 +905,14 @@ function viewExpenses(){
     <button class="btn btn-primary" onclick="openExpenseModal()">＋ Cheltuială</button>
   </div>
   ${cats.length?`<div class="grid kpis" style="margin-bottom:18px">${cats.slice(0,4).map(([c,v])=>`<div class="card kpi"><div class="label">${esc(c)}</div><div class="value" style="font-size:20px;color:var(--text)">${fmt(v)}</div></div>`).join('')}</div>`:''}
-  ${!list.length?`<div class="card empty"><div class="big">🧾</div>Nicio cheltuială înregistrată.</div>`:`
-  <div class="table-wrap cards-mobile t-expenses"><table>
+  ${!DB.expenses.length?`<div class="card empty"><div class="big">🧾</div>Nicio cheltuială înregistrată.</div>`:`
+  <input class="search block" placeholder="🔎 Caută după descriere, categorie, dată…" value="${esc(expenseSearch)}" oninput="expenseSearch=this.value;rerenderExpenses()">
+  <div id="expensesList">${expensesTable(expenseList())}</div>`}`;
+}
+function rerenderExpenses(){ const el=$('#expensesList'); if(el) el.innerHTML=expensesTable(expenseList()); }
+function expensesTable(list){
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio cheltuială găsită pentru „${esc(expenseSearch)}”.</div>`;
+  return `<div class="table-wrap cards-mobile t-expenses"><table>
     <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Sumă</th><th></th></tr></thead>
     <tbody>${list.map(e=>`<tr>
       <td>${esc(e.date)}</td>
@@ -895,7 +921,7 @@ function viewExpenses(){
       <td class="num" style="color:var(--danger);font-weight:700">${fmt(e.amount)}</td>
       <td><div class="row-actions"><button class="icon-btn" onclick="openExpenseModal('${e.id}')">✏️</button><button class="icon-btn danger" onclick="delExpense('${e.id}')">🗑️</button></div></td>
     </tr>`).join('')}</tbody>
-  </table></div>`}`;
+  </table></div>`;
 }
 function delExpense(id){ confirmModal('Ștergi această cheltuială?','',()=>{DB.expenses=DB.expenses.filter(e=>e.id!==id);save();render();toast('Cheltuială ștearsă','ok');}); }
 
@@ -950,10 +976,17 @@ function delInstructor(id){
   const cnt=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(i.name||'').toLowerCase()).length;
   confirmModal(`Ștergi profesorul „${esc(i.name)}”?`,(cnt?`${cnt} cursant(i) rămân fără profesor. `:'')+'Salariile deja plătite NU se șterg.',()=>{ DB.instructors=DB.instructors.filter(x=>x.id!==id); save(); render(); toast('Profesor șters','ok'); });
 }
-function viewInstructors(){
+let instructorSearch='';
+function instructorList(){
+  let list=DB.instructors.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(instructorSearch){const q=instructorSearch.toLowerCase();list=list.filter(i=>(i.name||'').toLowerCase().includes(q)||(i.phone||'').includes(q));}
+  return list;
+}
+function rerenderInstructors(){ const el=$('#instructorsList'); if(el) el.innerHTML=instructorsTable(); }
+function instructorsTable(){
   const ym=salaryMonthKey();
-  const list=DB.instructors.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  const yrs=[]; for(let y=now.getFullYear()-3;y<=now.getFullYear()+1;y++) yrs.push(y);
+  const list=instructorList();
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Niciun profesor găsit pentru „${esc(instructorSearch)}”.</div>`;
   let totalSal=0, totalPaid=0;
   const rows=list.map(i=>{
     const income=instrMonthIncome(i,salPeriod.year,salPeriod.month);
@@ -974,6 +1007,15 @@ function viewInstructors(){
       </div></td>
     </tr>`;
   }).join('');
+  return `<div class="table-wrap cards-mobile t-instructors"><table>
+    <thead><tr><th>Profesor</th><th class="num">Procent</th><th class="num">Încasări lună</th><th class="num">Salariu</th><th>Plată</th><th></th></tr></thead>
+    <tbody>${rows}
+      <tr style="border-top:2px solid var(--border)"><td><b>TOTAL</b></td><td></td><td></td><td class="num"><b>${fmt(totalSal)}</b></td><td><small style="color:var(--muted)">plătit: ${fmt(totalPaid)}</small></td><td></td></tr>
+    </tbody>
+  </table></div>`;
+}
+function viewInstructors(){
+  const yrs=[]; for(let y=now.getFullYear()-3;y<=now.getFullYear()+1;y++) yrs.push(y);
   return `
   <div class="toolbar">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -983,16 +1025,12 @@ function viewInstructors(){
     </div>
     <button class="btn btn-primary" onclick="openInstructorModal()">＋ Profesor</button>
   </div>
-  ${!list.length?`<div class="card empty"><div class="big">🧑‍🏫</div>Niciun profesor încă.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openInstructorModal()">＋ Adaugă primul profesor</button></div>`:`
+  ${!DB.instructors.length?`<div class="card empty"><div class="big">🧑‍🏫</div>Niciun profesor încă.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openInstructorModal()">＋ Adaugă primul profesor</button></div>`:`
   <div class="card" style="margin-bottom:14px">
     <div style="color:var(--muted);font-size:13px">Salariul = <b>procent × încasările aduse de cursanții profesorului</b> în luna selectată (<b>${MONTHS_FULL[salPeriod.month]} ${salPeriod.year}</b>). Apasă „💸 Plătește" ca să-l treci automat la Cheltuieli pe luna respectivă.</div>
   </div>
-  <div class="table-wrap cards-mobile t-instructors"><table>
-    <thead><tr><th>Profesor</th><th class="num">Procent</th><th class="num">Încasări lună</th><th class="num">Salariu</th><th>Plată</th><th></th></tr></thead>
-    <tbody>${rows}
-      <tr style="border-top:2px solid var(--border)"><td><b>TOTAL</b></td><td></td><td></td><td class="num"><b>${fmt(totalSal)}</b></td><td><small style="color:var(--muted)">plătit: ${fmt(totalPaid)}</small></td><td></td></tr>
-    </tbody>
-  </table></div>`}`;
+  <input class="search block" placeholder="🔎 Caută profesor după nume, telefon…" value="${esc(instructorSearch)}" oninput="instructorSearch=this.value;rerenderInstructors()">
+  <div id="instructorsList">${instructorsTable()}</div>`}`;
 }
 
 /* ---------- REPORTS ---------- */
@@ -1059,12 +1097,24 @@ function viewReports(){
 }
 
 /* ---------- COURSES ---------- */
+let courseSearch='';
+function courseListF(){
+  let list=DB.courses.slice();
+  if(courseSearch){const q=courseSearch.toLowerCase();list=list.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.type||'').toLowerCase().includes(q));}
+  return list;
+}
 function viewCourses(){
   return `
   <div class="toolbar"><div style="flex:1;color:var(--muted);font-size:13.5px">Tipuri de cursuri și prețuri standard. Folosite la adăugarea cursanților.</div>
   <button class="btn btn-primary" onclick="openCourseModal()">＋ Tip de curs</button></div>
-  <div class="grid kpis" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
-    ${DB.courses.map(c=>{const cnt=DB.students.filter(s=>s.courseId===c.id).length;return `
+  ${!DB.courses.length?'':`<input class="search block" placeholder="🔎 Caută curs după nume, categorie…" value="${esc(courseSearch)}" oninput="courseSearch=this.value;rerenderCourses()">`}
+  <div id="coursesGrid">${coursesGrid(courseListF())}</div>`;
+}
+function rerenderCourses(){ const el=$('#coursesGrid'); if(el) el.innerHTML=coursesGrid(courseListF()); }
+function coursesGrid(list){
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Niciun curs ${DB.courses.length?`găsit pentru „${esc(courseSearch)}”`:'încă'}.</div>`;
+  return `<div class="grid kpis" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
+    ${list.map(c=>{const cnt=DB.students.filter(s=>s.courseId===c.id).length;return `
       <div class="card" style="border-left:4px solid ${c.color}">
         <div style="display:flex;justify-content:space-between;align-items:start">
           <div><div style="font-weight:700;font-size:15px">${esc(c.name)}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(c.type)}</div></div>

@@ -330,7 +330,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
 
 /* ===== Ecran de autentificare ===== */
 #authGate{position:fixed; inset:0; z-index:99999; display:none; align-items:center; justify-content:center;
-  padding:20px; background:radial-gradient(1200px 600px at 50% -10%, #20232b, var(--bg)); overflow:auto}
+  padding:20px; background:rgba(13,15,19,.74); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); overflow:auto}
 #authGate.show{display:flex}
 .auth-card{width:100%; max-width:380px; background:var(--surface); border:1px solid var(--border);
   border-radius:var(--r-lg); padding:26px 22px; box-shadow:0 20px 60px rgba(0,0,0,.45)}
@@ -365,7 +365,7 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v2.2 · ștergere protejată</div>
+      <div style="margin-top:4px">v2.3 · demo doar la login</div>
     </div>
   </aside>
 
@@ -448,7 +448,7 @@ function load(){
     return d;
   }catch(e){ return blankDB(); }
 }
-function save(){ DB.updatedAt=Date.now(); localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); if(window.Sync) Sync.schedulePush(); }
+function save(){ if(PREVIEW) return; DB.updatedAt=Date.now(); localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); if(window.Sync) Sync.schedulePush(); }
 
 /* ============================================================
    HELPERS
@@ -524,6 +524,7 @@ const ROLE_ROUTES={
   angajat:['students','payments','courses','settings']
 };
 let route='dashboard';
+let PREVIEW=false; // true cât timp NU ești logat → afișează date demo (nesalvate)
 
 function buildNav(){
   const allowed=NAV.filter(n=>Auth.can(n.id));
@@ -1250,12 +1251,10 @@ function viewSettings(){
       <div class="hint" style="margin-top:12px">Dimensiune date: ${sz} KB · ${DB.students.length} cursanți · ${DB.payments.length} încasări · ${DB.expenses.length} cheltuieli</div>
     </div>
     <div class="card">
-      <div class="section-title" style="margin-top:0">🧪 Date demonstrative</div>
-      <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Încarcă date de test ca să vezi cum arată CRM-ul completat. Poți reseta oricând.</p>
-      <button class="btn btn-ghost" onclick="loadDemo()">✨ Încarcă date demo</button>
-      <div class="section-title" style="margin-top:22px;color:var(--danger)">⚠️ Zonă periculoasă</div>
-      <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Șterge definitiv toate datele de pe acest dispozitiv.</p>
+      <div class="section-title" style="margin-top:0;color:var(--danger)">⚠️ Zonă periculoasă</div>
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Șterge definitiv toate datele de pe acest dispozitiv. Acțiunea cere fraza de confirmare + parola și descarcă întâi un backup.</p>
       <button class="btn btn-danger" onclick="resetAll()">🗑️ Șterge toate datele</button>
+      <div class="hint" style="margin-top:14px">ℹ️ Datele demonstrative apar doar pe ecranul de autentificare (previzualizare). După ce intri în cont, vezi exclusiv datele tale reale.</div>
     </div>
   </div>
   <div class="card" style="margin-top:18px">
@@ -1401,41 +1400,25 @@ async function confirmReset(){
   try{ exportJSON(); }catch(e){}
   DB=blankDB(); save(); render(); closeModal(); toast('Toate datele au fost șterse (backup descărcat)','ok');
 }
-function loadDemo(){
-  if(!Auth.isAdmin()) return toast('Doar administratorul poate face asta','err');
-  const hasData=DB.students.length||DB.payments.length||DB.expenses.length;
-  if(!hasData){ return _applyDemo(); }
-  const u=Auth.current();
-  modal('🧪 Încarci date demo?',`
-    <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">Ai deja date introduse. Acestea vor fi <b style="color:var(--danger)">înlocuite</b> cu date de test.</p>
-    <div style="background:rgba(232,39,58,.08);border:1px solid var(--danger);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:14px;font-size:13px">🛟 Se descarcă automat un <b>backup</b> înainte.</div>
-    ${u?`<div class="field"><label>Parola contului tău (${esc(u.user)})</label><input id="dm_pass" type="password" autocomplete="off" placeholder="parola ta"></div>`:''}
-  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-danger" onclick="confirmDemo()">Înlocuiește cu demo</button>`);
-}
-async function confirmDemo(){
-  const u=Auth.current();
-  if(u){ const p=$('#dm_pass').value||''; if(await _authHash(p,_ub64(u.salt))!==u.hash) return toast('Parolă greșită','err'); }
-  try{ exportJSON(); }catch(e){}
-  closeModal(); _applyDemo();
-}
-function _applyDemo(){
-    DB=blankDB();
+/* Generează un set de date demo IN MEMORIE (nu se salvează) — folosit doar pentru previzualizare înainte de login */
+function buildDemoDB(){
+    const D=blankDB(); D.updatedAt=Date.now();
     const names=['Andrei Popescu','Mihai Ionescu','Cristian Dumitru','Ștefan Radu','Vlad Marin','Alex Georgescu','Robert Stan','Darius Nicolae','Sergiu Toma','Paul Ene','Ionuț Barbu','Cătălin Vasile'];
     const statuses=['in_curs','in_curs','in_curs','finalizat','finalizat','in_curs','finalizat','in_curs','abandonat','in_curs','finalizat','in_curs'];
     const Y=now.getFullYear();
     names.forEach((n,i)=>{
-      const c=DB.courses[i%DB.courses.length];
+      const c=D.courses[i%D.courses.length];
       const month=i%6+1; const sd=`${Y}-${String(month).padStart(2,'0')}-${String((i%26)+1).padStart(2,'0')}`;
       const id=uid();
-      DB.students.push({id,name:n,phone:'07'+(20000000+i*111111),email:'',courseId:c.id,price:c.defaultPrice,startDate:sd,status:statuses[i],instructor:i%2?'Daniel':'Sorin',notes:'',createdAt:Date.now()-i*86400000});
-      // payments: full for finalized, partial otherwise
+      D.students.push({id,name:n,phone:'07'+(20000000+i*111111),email:'',courseId:c.id,price:c.defaultPrice,startDate:sd,status:statuses[i],instructor:i%2?'Daniel':'Sorin',notes:'',createdAt:Date.now()-i*86400000});
       const pay=statuses[i]==='finalizat'?c.defaultPrice:statuses[i]==='abandonat'?Math.round(c.defaultPrice*0.3):Math.round(c.defaultPrice*0.6);
-      DB.payments.push({id:uid(),studentId:id,amount:Math.round(pay*0.5),date:sd,method:'Numerar',note:'Avans',createdAt:Date.now()-i*86400000});
-      if(statuses[i]!=='abandonat') DB.payments.push({id:uid(),studentId:id,amount:pay-Math.round(pay*0.5),date:`${Y}-${String(month+1).padStart(2,'0')}-10`,method:'Card',note:'Rată',createdAt:Date.now()-i*80000000});
+      D.payments.push({id:uid(),studentId:id,amount:Math.round(pay*0.5),date:sd,method:'Numerar',note:'Avans',createdAt:Date.now()-i*86400000});
+      if(statuses[i]!=='abandonat') D.payments.push({id:uid(),studentId:id,amount:pay-Math.round(pay*0.5),date:`${Y}-${String(month+1).padStart(2,'0')}-10`,method:'Card',note:'Rată',createdAt:Date.now()-i*80000000});
     });
     const exCats=[['Chirie',2500],['Materiale & consumabile',1800],['Salarii & colaboratori',4000],['Marketing & publicitate',1200],['Utilități',600],['Echipamente',2200]];
-    for(let m=1;m<=6;m++) exCats.forEach(([cat,amt])=>{ if(Math.random()>.2) DB.expenses.push({id:uid(),category:cat,amount:amt+Math.round((Math.random()-.5)*400),date:`${Y}-${String(m).padStart(2,'0')}-05`,description:cat+' luna '+MONTHS_FULL[m-1],createdAt:Date.now()}); });
-    save(); render(); toast('Date demo încărcate','ok');
+    for(let m=1;m<=6;m++) exCats.forEach(([cat,amt])=>{ if(Math.random()>.2) D.expenses.push({id:uid(),category:cat,amount:amt+Math.round((Math.random()-.5)*400),date:`${Y}-${String(m).padStart(2,'0')}-05`,description:cat+' luna '+MONTHS_FULL[m-1],createdAt:Date.now()}); });
+    D.instructors=[{id:uid(),name:'Daniel',percent:50,phone:'',createdAt:Date.now()},{id:uid(),name:'Sorin',percent:50,phone:'',createdAt:Date.now()}];
+    return D;
 }
 
 /* ============================================================
@@ -1529,6 +1512,7 @@ const Sync={
     this.setStatus('Sincronizat','ok');
   },
   async push(){
+    if(PREVIEW||!Auth.authed()) return;
     if(!this.on()||this.busy) return; this.busy=true; this.setStatus('Se salvează…');
     try{ await _ghUpdate(this.cfg.token,this.cfg.gistId,{updatedAt:DB.updatedAt||Date.now(),enc:await _encrypt(DB,this.cfg.pass)});
       this.cfg.lastSync=Date.now(); this.saveCfg(); this.setStatus('Sincronizat','ok');
@@ -1536,6 +1520,7 @@ const Sync={
     this.busy=false;
   },
   async pull(){
+    if(PREVIEW||!Auth.authed()) return; // nu aduce date reale cât timp ești pe ecranul de login (previzualizare demo)
     if(!this.on()) return; if(document.getElementById('overlay').classList.contains('open')) return;
     try{ const payload=await _ghGet(this.cfg.token,this.cfg.gistId);
       if(payload&&payload.updatedAt&&payload.updatedAt>(DB.updatedAt||0)){
@@ -1619,7 +1604,11 @@ const Auth={
   isAdmin(){ return this.role()==='admin'; },
   can(r){ const role=this.role(); if(!role) return true; return (ROLE_ROUTES[role]||ROLE_ROUTES.admin).includes(r); },
   landing(){ return this.role()==='angajat'?'students':'dashboard'; },
-  boot(){ this.load(); if(this.authed()){ this.hide(); startIdleTimer(); } else { this.screen=this.has()?'login':'register'; this.show(); } updateUserLine(); },
+  boot(){ this.load();
+    if(this.authed()){ PREVIEW=false; DB=load(); this.hide(); buildNav(); render(); startIdleTimer(); }
+    else { PREVIEW=true; DB=buildDemoDB(); buildNav(); render(); this.screen=this.has()?'login':'register'; this.show(); }
+    updateUserLine();
+  },
   show(){ const g=$('#authGate'); g.innerHTML=this.html(); g.classList.add('show'); setTimeout(()=>{const i=$('#au_user'); i&&i.focus();},60); },
   hide(){ const g=$('#authGate'); g.classList.remove('show'); g.innerHTML=''; },
   go(s){ this.screen=s; this.show(); },
@@ -1649,16 +1638,17 @@ const Auth={
     const salt=crypto.getRandomValues(new Uint8Array(16));
     this.cfg.users.push({user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
     this.saveCfg(); localStorage.setItem(SESS_KEY,user);
-    this.hide(); route=this.landing(); buildNav(); render(); startIdleTimer(); toast('Cont creat. Bun venit, '+user+'!','ok');
+    PREVIEW=false; DB=load(); this.hide(); route=this.landing(); buildNav(); render(); updateUserLine(); startIdleTimer(); toast('Cont creat. Bun venit, '+user+'!','ok');
   },
   async login(){
     const user=($('#au_user').value||'').trim(), pass=$('#au_pass').value||'';
     const u=this.find(user); if(!u) return this.err('Utilizator inexistent.');
     if(await _authHash(pass,_ub64(u.salt))!==u.hash) return this.err('Parolă greșită.');
     localStorage.setItem(SESS_KEY,u.user);
-    this.hide(); route=this.landing(); buildNav(); render(); startIdleTimer(); toast('Bun venit, '+u.user+'!','ok');
+    PREVIEW=false; DB=load(); this.hide(); route=this.landing(); buildNav(); render(); updateUserLine(); startIdleTimer(); toast('Bun venit, '+u.user+'!','ok');
+    if(window.Sync) Sync.pull();
   },
-  logout(reason){ localStorage.removeItem(SESS_KEY); stopIdleTimer(); this.screen=this.has()?'login':'register'; this.show(); updateUserLine(); toast(reason||'Te-ai deconectat','ok'); },
+  logout(reason){ localStorage.removeItem(SESS_KEY); stopIdleTimer(); PREVIEW=true; DB=buildDemoDB(); this.screen=this.has()?'login':'register'; buildNav(); render(); this.show(); updateUserLine(); toast(reason||'Te-ai deconectat','ok'); },
   addAccountModal(){ if(!this.isAdmin()) return; modal('Adaugă cont nou',`
       <div class="field"><label>Utilizator *</label><input id="na_user" placeholder="nume utilizator"></div>
       <div class="field"><label>Parolă *</label><input id="na_pass" type="password" placeholder="minim 4 caractere"></div>
@@ -1737,10 +1727,10 @@ function stopIdleTimer(){ clearTimeout(_idleTimer); _idleTimer=null; }
 /* ============================================================
    INIT
    ============================================================ */
-Auth.load();
-buildNav(); renderStamp(); Sync.load(); render();
+Auth.load(); Sync.load();
+renderStamp();
+Auth.boot();   // setează PREVIEW + DB (demo dacă nu ești logat, real dacă ești) și randează
 Sync.init();
-Auth.boot();
 window.addEventListener('focus',()=>Sync.pull());
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) Sync.pull(); });
 </script>

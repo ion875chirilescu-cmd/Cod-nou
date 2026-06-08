@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v2.9 · recuperare cont</div>
+      <div style="margin-top:4px">v3.0 · rolurile se salvează</div>
     </div>
   </aside>
 
@@ -1583,7 +1583,7 @@ async function _ghUpdate(token,id,payload){
   if(!r.ok) throw new Error('Nu pot salva în cloud (cod '+r.status+')');
 }
 /* Payload de sincronizare v2: date + conturi (login comun pe toate dispozitivele) */
-function _syncPayload(){ return {v:2, db:DB, auth:{users:Auth.cfg.users}}; }
+function _syncPayload(){ return {v:2, db:DB, auth:{users:Auth.cfg.users, updatedAt:Auth.cfg.authUpdatedAt||0}}; }
 async function _syncPushNow(){ // urcă imediat în cloud (folosit la recuperare, ocolește gărzile)
   if(!Sync.cfg||!Sync.cfg.token||!Sync.cfg.gistId) return;
   await _ghUpdate(Sync.cfg.token,Sync.cfg.gistId,{updatedAt:DB.updatedAt||Date.now(),enc:await _encrypt(_syncPayload(),Sync.cfg.pass)});
@@ -1707,6 +1707,7 @@ const Auth={
   load(){ try{ this.cfg=JSON.parse(localStorage.getItem(AUTH_KEY))||{users:[]}; }catch(e){ this.cfg={users:[]}; } if(!this.cfg.users) this.cfg.users=[]; this.cfg.users.forEach(u=>{ if(!u.role||u.role==='admin') u.role='proprietar'; }); },
   saveCfg(){ localStorage.setItem(AUTH_KEY,JSON.stringify(this.cfg)); },
   _push(){ if(window.Sync&&Sync.on()) _syncPushNow().catch(()=>{}); }, // propagă imediat schimbările de cont în cloud
+  commit(){ this.cfg.authUpdatedAt=Date.now(); this.commit(); }, // marchează schimbarea ca fiind cea mai nouă + urcă în cloud
   resetUserPasswordModal(name){ if(!this.isOwner()) return; modal('🔑 Resetează parola · '+esc(name),`
       <div class="field"><label>Parolă nouă *</label><input id="ru_new" type="password" placeholder="minim 4 caractere"></div>
       <div class="field"><label>Confirmă parola nouă *</label><input id="ru_new2" type="password" placeholder="repetă parola"></div>
@@ -1719,20 +1720,20 @@ const Auth={
     if(np.length<4) return toast('Parola: minim 4 caractere','err');
     if(np!==np2) return toast('Parolele nu coincid','err');
     const salt=crypto.getRandomValues(new Uint8Array(16));
-    u.salt=_b64(salt); u.hash=await _authHash(np,salt); this.saveCfg(); this._push();
+    u.salt=_b64(salt); u.hash=await _authHash(np,salt); this.commit();
     closeModal(); toast('Parolă resetată pentru „'+name+'"','ok');
   },
-  mergeRemote(remoteAuth){ // îmbină conturile primite din cloud cu cele locale (cloud are prioritate la conflict). Întoarce true dacă s-a schimbat ceva
+  mergeRemote(remoteAuth){ // adoptă conturile din cloud DOAR dacă sunt mai noi decât cele locale (după marcaj de timp). Întoarce true dacă s-a schimbat ceva
     if(!remoteAuth||!Array.isArray(remoteAuth.users)) return false;
+    const rt=remoteAuth.updatedAt||0, lt=this.cfg.authUpdatedAt||0;
+    // dacă avem deja conturi locale și cloud-ul NU e mai nou, păstrăm localul (nu pierdem modificările tocmai făcute)
+    if(this.cfg.users.length>0 && rt<=lt) return false;
     const before=JSON.stringify(this.cfg.users);
-    const byName={};
-    this.cfg.users.forEach(u=>byName[u.user.toLowerCase()]=u);
-    remoteAuth.users.forEach(u=>{ if(u&&u.user) byName[u.user.toLowerCase()]=u; });
-    this.cfg.users=Object.values(byName);
+    this.cfg.users=remoteAuth.users.map(u=>Object.assign({},u));
     this.cfg.users.forEach(u=>{ if(!u.role||u.role==='admin') u.role='proprietar'; });
-    const changed=JSON.stringify(this.cfg.users)!==before;
-    if(changed) this.saveCfg();
-    return changed;
+    this.cfg.authUpdatedAt=Math.max(rt,lt);
+    this.saveCfg();
+    return JSON.stringify(this.cfg.users)!==before;
   },
   has(){ return this.cfg.users.length>0; },
   find(name){ const n=(name||'').trim().toLowerCase(); return this.cfg.users.find(u=>u.user.toLowerCase()===n); },
@@ -1820,7 +1821,7 @@ const Auth={
     if(np!==np2) return toast('Parolele nu coincid','err');
     const salt=crypto.getRandomValues(new Uint8Array(16));
     u.salt=_b64(salt); u.hash=await _authHash(np,salt);
-    this.saveCfg();
+    this.cfg.authUpdatedAt=Date.now(); this.saveCfg();
     try{ await _syncPushNow(); }catch(e){}   // urcă în cloud ca să rămână permanent
     closeModal();
     this.screen='login'; this.show(); toast('Parolă resetată pentru „'+name+'". Autentifică-te.','ok');
@@ -1836,8 +1837,8 @@ const Auth={
     const role=this.has()?'angajat':'proprietar'; // primul cont = proprietar (drepturi depline)
     const salt=crypto.getRandomValues(new Uint8Array(16));
     this.cfg.users.push({user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()});
-    this.saveCfg(); localStorage.setItem(SESS_KEY,user);
-    PREVIEW=false; DB=load(); this.hide(); route=this.landing(); buildNav(); render(); updateUserLine(); startIdleTimer(); toast('Cont creat. Bun venit, '+user+'!','ok');
+    this.cfg.authUpdatedAt=Date.now(); this.saveCfg(); localStorage.setItem(SESS_KEY,user);
+    PREVIEW=false; DB=load(); this.hide(); route=this.landing(); buildNav(); render(); updateUserLine(); startIdleTimer(); this._push(); toast('Cont creat. Bun venit, '+user+'!','ok');
   },
   async login(){
     const user=($('#au_user').value||'').trim(), pass=$('#au_pass').value||'';
@@ -1869,14 +1870,14 @@ const Auth={
     const rec={user,role,salt:_b64(salt),hash:await _authHash(pass,salt),createdAt:Date.now()};
     if(role==='angajat'){ const iid=$('#na_instr')?$('#na_instr').value:''; if(iid){ const ins=instructorById(iid); rec.instructorId=iid; rec.instructorName=ins?ins.name:''; } }
     this.cfg.users.push(rec);
-    this.saveCfg(); this._push(); closeModal(); render(); toast('Cont „'+user+'" creat ('+ROLE_LABEL[role]+')','ok');
+    this.commit(); closeModal(); render(); toast('Cont „'+user+'" creat ('+ROLE_LABEL[role]+')','ok');
   },
   setRole(name,role){
     if(!this.isOwner()) return;
     const u=this.find(name); if(!u) return;
     const owners=this.cfg.users.filter(x=>(x.role||'proprietar')==='proprietar');
     if((u.role||'proprietar')==='proprietar' && role!=='proprietar' && owners.length<=1) return toast('Trebuie să rămână cel puțin un proprietar','err');
-    u.role=role; if(role!=='angajat'){ delete u.instructorId; delete u.instructorName; } this.saveCfg(); this._push();
+    u.role=role; if(role!=='angajat'){ delete u.instructorId; delete u.instructorName; } this.commit();
     const cur=this.current();
     if(cur&&cur.user===u.user){ buildNav(); route=this.can(route)?route:this.landing(); }
     render(); toast('Rol actualizat: '+u.user+' → '+ROLE_LABEL[role],'ok');
@@ -1886,7 +1887,7 @@ const Auth={
     const u=this.find(name); if(!u) return;
     if(iid){ const ins=instructorById(iid); u.instructorId=iid; u.instructorName=ins?ins.name:''; }
     else { delete u.instructorId; delete u.instructorName; }
-    this.saveCfg(); this._push(); render(); toast('Profesor asociat actualizat','ok');
+    this.commit(); render(); toast('Profesor asociat actualizat','ok');
   },
   changePasswordModal(){ modal('Schimbă parola',`
       <div class="field"><label>Parola actuală</label><input id="cp_cur" type="password"></div>
@@ -1900,7 +1901,7 @@ const Auth={
     if(np.length<4) return toast('Parola nouă: minim 4 caractere','err');
     if(np!==np2) return toast('Parolele nu coincid','err');
     const salt=crypto.getRandomValues(new Uint8Array(16));
-    u.salt=_b64(salt); u.hash=await _authHash(np,salt); this.saveCfg(); this._push();
+    u.salt=_b64(salt); u.hash=await _authHash(np,salt); this.commit();
     closeModal(); toast('Parolă schimbată','ok');
   },
   delAccount(name){
@@ -1911,7 +1912,7 @@ const Auth={
     if((tgt.role||'proprietar')==='proprietar' && owners.length<=1) return toast('Trebuie să rămână cel puțin un proprietar','err');
     const cur=this.current();
     confirmModal('Ștergi contul „'+name+'"?','Contul nu va mai putea fi folosit pentru autentificare.',()=>{
-      this.cfg.users=this.cfg.users.filter(u=>u.user!==name); this.saveCfg(); this._push();
+      this.cfg.users=this.cfg.users.filter(u=>u.user!==name); this.commit();
       if(cur&&cur.user===name){ localStorage.removeItem(SESS_KEY); this.boot(); } else { render(); }
       toast('Cont șters','ok');
     });

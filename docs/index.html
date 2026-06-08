@@ -371,7 +371,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.3 · angajat vede doar salariul</div>
+      <div style="margin-top:4px">v3.4 · cursanți pe luna selectată</div>
     </div>
   </aside>
 
@@ -1237,7 +1237,9 @@ function viewMyZone(){
   const income=instrMonthIncome(instr,y,m);
   const sal=Math.round(income*Number(instr.percent||0)/100);
   const paidExp=DB.expenses.find(e=>e.salary&&e.instructorId===instr.id&&e.salaryMonth===ym);
-  const mine=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(instr.name||'').toLowerCase());
+  const monthPay=sid=>DB.payments.filter(p=>p.studentId===sid&&(p.date||'').slice(0,7)===ym).reduce((a,p)=>a+Number(p.amount||0),0);
+  // doar cursanții lui care au avut încasări în luna selectată (cei care contează la salariul lunii)
+  const mine=DB.students.filter(s=>(s.instructor||'').toLowerCase()===(instr.name||'').toLowerCase() && monthPay(s.id)>0);
   const yrs=[]; for(let yy=now.getFullYear()-3;yy<=now.getFullYear()+1;yy++) yrs.push(yy);
   const stB={in_curs:'b-blue',finalizat:'b-green',abandonat:'b-gray'};
   const stL={in_curs:'În curs',finalizat:'Finalizat',abandonat:'Abandonat'};
@@ -1252,10 +1254,10 @@ function viewMyZone(){
   </div>
   <div class="grid kpis" style="margin-bottom:18px">
     <div class="card kpi green"><div class="label">Salariul tău · ${MONTHS_FULL[m]} ${y}</div><div class="value">${fmt(sal)}</div><div style="font-size:12px;margin-top:4px;color:${paidExp?'var(--success)':'var(--warning)'}">${paidExp?'✓ Plătit':'În așteptare'}</div></div>
-    <div class="card kpi"><div class="label">Cursanții mei</div><div class="value" style="color:var(--text)">${mine.length}</div></div>
+    <div class="card kpi"><div class="label">Cursanți în ${MONTHS_FULL[m]}</div><div class="value" style="color:var(--text)">${mine.length}</div></div>
   </div>
-  <div class="section-title">🎓 Cursanții mei</div>
-  ${!mine.length?`<div class="card empty"><div class="big">🎓</div>Niciun cursant asociat ție momentan.</div>`:`
+  <div class="section-title">🎓 Cursanții mei · ${MONTHS_FULL[m]} ${y}</div>
+  ${!mine.length?`<div class="card empty"><div class="big">🎓</div>Niciun cursant în ${MONTHS_FULL[m]} ${y}.</div>`:`
   <div class="table-wrap cards-mobile"><table>
     <thead><tr><th>Cursant</th><th>Curs</th><th>Status</th></tr></thead>
     <tbody>${mine.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(s=>{const c=courseById(s.courseId)||{};return `<tr>

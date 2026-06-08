@@ -378,7 +378,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.7 · conectare dispozitiv + fix</div>
+      <div style="margin-top:4px">v3.8 · conectare dispozitiv (admin)</div>
     </div>
   </aside>
 
@@ -1324,7 +1324,10 @@ function viewSettingsLimited(){
   <div class="card" style="margin-top:18px">
     <div class="section-title" style="margin-top:0">📱 Aplicație mobilă</div>
     <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Instaleaz-o pe telefon ca pe o aplicație: iconiță pe ecran, se deschide pe tot ecranul și merge și fără internet.</p>
-    <button class="btn btn-primary" onclick="installApp()">📲 Instalează aplicația</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="installApp()">📲 Instalează aplicația</button>
+      ${Sync.on()?`<button class="btn btn-ghost" onclick="syncPairDevice()">🔗 Conectează un dispozitiv nou</button>`:''}
+    </div>
     <div class="section-title">ℹ️ Despre</div>
     <p style="color:var(--muted);font-size:13.5px"><b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și finanțe.<br>Pentru setări avansate și ștergeri, contactează proprietarul.</p>
   </div>`;

@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0E0E10" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Select CRM" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -371,7 +378,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v3.5 · restanțe + telefon (angajat)</div>
+      <div style="margin-top:4px">v3.6 · aplicație instalabilă (PWA)</div>
     </div>
   </aside>
 
@@ -1315,7 +1322,10 @@ function viewSettingsLimited(){
     </div>
   </div>`:''}
   <div class="card" style="margin-top:18px">
-    <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
+    <div class="section-title" style="margin-top:0">📱 Aplicație mobilă</div>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Instaleaz-o pe telefon ca pe o aplicație: iconiță pe ecran, se deschide pe tot ecranul și merge și fără internet.</p>
+    <button class="btn btn-primary" onclick="installApp()">📲 Instalează aplicația</button>
+    <div class="section-title">ℹ️ Despre</div>
     <p style="color:var(--muted);font-size:13.5px"><b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și finanțe.<br>Pentru setări avansate și ștergeri, contactează proprietarul.</p>
   </div>`;
 }
@@ -1389,7 +1399,10 @@ function viewSettings(){
     <div class="hint" style="margin-top:10px">Alege rolul (și profesorul pentru angajat), apoi apasă <b>💾 Salvează</b> pe rândul respectiv. <b>Proprietar:</b> control total. <b>Administrator:</b> vede tot + adaugă/editează, fără ștergere. <b>Angajat/Profesor:</b> vede doar cursanții lui și salariul lui pe lună.</div>`;})()}
   </div>
   <div class="card" style="margin-top:18px">
-    <div class="section-title" style="margin-top:0">ℹ️ Despre</div>
+    <div class="section-title" style="margin-top:0">📱 Aplicație mobilă</div>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Instaleaz-o pe telefon ca pe o aplicație: iconiță pe ecran, se deschide pe tot ecranul și merge și fără internet.</p>
+    <button class="btn btn-primary" onclick="installApp()">📲 Instalează aplicația</button>
+    <div class="section-title">ℹ️ Despre</div>
     <p style="color:var(--muted);font-size:13.5px">
       <b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și finanțe pentru academia de barbering.<br>
       Funcționează în orice browser (desktop & mobil), fără internet și fără cont. Toate datele rămân la tine.
@@ -1998,6 +2011,33 @@ async function tryPairFromHash(){
     }
   }catch(e){ history.replaceState(null,'',location.pathname+location.search); toast('Link de conectare invalid','err'); }
   return false;
+}
+
+/* ============================================================
+   PWA — service worker + instalare pe ecranul principal
+   ============================================================ */
+let _installPrompt=null;
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); _installPrompt=e; });
+function isStandalone(){ return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true; }
+async function installApp(){
+  if(_installPrompt){ _installPrompt.prompt(); try{ await _installPrompt.userChoice; }catch(e){} _installPrompt=null; return; }
+  if(isStandalone()){ toast('Aplicația e deja instalată ✓','ok'); return; }
+  const iOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  modal('📲 Instalează aplicația', iOS?`
+    <p style="color:var(--muted);font-size:13.5px;line-height:1.7;margin-bottom:6px">Pe iPhone / iPad (în <b>Safari</b>):</p>
+    <ol style="color:var(--muted);font-size:13.5px;line-height:1.95;margin:0 0 0 18px;padding:0">
+      <li>Apasă butonul <b>Partajează</b> (pătratul cu săgeată ⬆️, jos).</li>
+      <li>Derulează și alege <b>„Adaugă pe ecranul de pornire"</b>.</li>
+      <li>Apasă <b>Adaugă</b> → apare iconița ca o aplicație.</li>
+    </ol>`:`
+    <p style="color:var(--muted);font-size:13.5px;line-height:1.7;margin-bottom:6px">Pe Android (în <b>Chrome</b>):</p>
+    <ol style="color:var(--muted);font-size:13.5px;line-height:1.95;margin:0 0 0 18px;padding:0">
+      <li>Apasă meniul <b>⋮</b> (sus dreapta).</li>
+      <li>Alege <b>„Instalează aplicația"</b> (sau „Adaugă pe ecranul principal").</li>
+      <li>Confirmă → apare iconița ca o aplicație.</li>
+    </ol>`,
+  `<button class="btn btn-primary" onclick="closeModal()">Am înțeles</button>`);
 }
 
 /* ============================================================

@@ -85,6 +85,10 @@ a{color:var(--primary); text-decoration:none}
 .period .seg button.active{background:var(--primary); color:#fff}
 
 /* ---------- Cards / KPIs ---------- */
+.cat-btn{cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .05s; user-select:none}
+.cat-btn:hover{border-color:var(--primary)}
+.cat-btn:active{transform:scale(.98)}
+.cat-btn.on{border-color:var(--primary); box-shadow:0 0 0 2px var(--primary) inset}
 .grid{display:grid; gap:16px}
 .kpis{grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); margin-bottom:18px}
 .card{
@@ -379,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v4.4 · rămâi conectat</div>
+      <div style="margin-top:4px">v4.5 · filtru pe categorii cheltuieli</div>
     </div>
   </aside>
 
@@ -1002,9 +1006,12 @@ function saveExpense(id){
   save(); closeModal(); render(); toast(id?'Cheltuială actualizată':'Cheltuială adăugată','ok');
 }
 let expenseSearch='';
+let expenseCat='';
+function toggleExpCat(c){ expenseCat=(expenseCat===c?'':c); render(); }
 function expenseList(){
   const [rf,rt]=rangeOf(PF.exp);
   let list=DB.expenses.filter(e=>inRange(e.date||'',rf,rt)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(expenseCat) list=list.filter(e=>e.category===expenseCat);
   if(expenseSearch){const q=expenseSearch.toLowerCase();list=list.filter(e=>(e.description||'').toLowerCase().includes(q)||(e.category||'').toLowerCase().includes(q)||(e.date||'').includes(q));}
   return list;
 }
@@ -1020,14 +1027,15 @@ function viewExpenses(){
     <button class="btn btn-primary" onclick="openExpenseModal()">＋ Cheltuială</button>
   </div>
   ${!DB.expenses.length?'':pfWidget('exp')}
-  ${cats.length?`<div class="grid kpis" style="margin-bottom:18px">${cats.slice(0,4).map(([c,v])=>`<div class="card kpi"><div class="label">${esc(c)}</div><div class="value" style="font-size:20px;color:var(--text)">${fmt(v)}</div></div>`).join('')}</div>`:''}
+  ${cats.length?`<div class="grid kpis" style="margin-bottom:14px">${cats.map(([c,v])=>{const on=expenseCat===c;return `<div class="card kpi cat-btn${on?' on':''}" role="button" tabindex="0" onclick="toggleExpCat('${esc(c)}')"><div class="label">${esc(c)}${on?' ✓':''}</div><div class="value" style="font-size:20px;color:${on?'var(--primary)':'var(--text)'}">${fmt(v)}</div></div>`;}).join('')}</div>
+  <div style="color:var(--muted);font-size:12.5px;margin-bottom:14px">${expenseCat?`Afișezi doar <b style="color:var(--primary)">${esc(expenseCat)}</b> · <a onclick="toggleExpCat('${esc(expenseCat)}')" style="cursor:pointer;text-decoration:underline">arată toate</a>`:'Apasă o categorie pentru a filtra lista.'}</div>`:''}
   ${!DB.expenses.length?`<div class="card empty"><div class="big">🧾</div>Nicio cheltuială înregistrată.</div>`:`
   <input class="search block" placeholder="🔎 Caută după descriere, categorie, dată…" value="${esc(expenseSearch)}" oninput="expenseSearch=this.value;rerenderExpenses()">
   <div id="expensesList">${expensesTable(expenseList())}</div>`}`;
 }
 function rerenderExpenses(){ const el=$('#expensesList'); if(el) el.innerHTML=expensesTable(expenseList()); }
 function expensesTable(list){
-  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio cheltuială ${PF.exp.mode==='all'?'':'în '+esc(pfLabel(PF.exp))+' '}${expenseSearch?`pentru „${esc(expenseSearch)}”`:'în acest interval'}.</div>`;
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio cheltuială ${expenseCat?'la <b>'+esc(expenseCat)+'</b> ':''}${PF.exp.mode==='all'?'':'în '+esc(pfLabel(PF.exp))+' '}${expenseSearch?`pentru „${esc(expenseSearch)}”`:'în acest interval'}.</div>`;
   const sum=list.reduce((a,e)=>a+Number(e.amount||0),0);
   return `<div class="table-wrap cards-mobile t-expenses"><table>
     <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Sumă</th><th></th></tr></thead>

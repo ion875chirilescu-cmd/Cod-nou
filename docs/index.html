@@ -292,10 +292,11 @@ td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
   .t-students td:nth-of-type(1)::before{content:"Cursant"}
   .t-students td:nth-of-type(2)::before{content:"Curs"}
   .t-students td:nth-of-type(3)::before{content:"Început"}
-  .t-students td:nth-of-type(4)::before{content:"Status"}
-  .t-students td:nth-of-type(5)::before{content:"Preț"}
-  .t-students td:nth-of-type(6)::before{content:"Achitat"}
-  .t-students td:nth-of-type(7)::before{content:"Progres plată"}
+  .t-students td:nth-of-type(4)::before{content:"Terminat"}
+  .t-students td:nth-of-type(5)::before{content:"Status"}
+  .t-students td:nth-of-type(6)::before{content:"Preț"}
+  .t-students td:nth-of-type(7)::before{content:"Achitat"}
+  .t-students td:nth-of-type(8)::before{content:"Progres plată"}
   .t-payments td:nth-of-type(1)::before{content:"Data"}
   .t-payments td:nth-of-type(2)::before{content:"Cursant"}
   .t-payments td:nth-of-type(3)::before{content:"Curs"}
@@ -378,7 +379,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v4.2 · interval pe fiecare mapă</div>
+      <div style="margin-top:4px">v4.3 · data finisării cursului</div>
     </div>
   </aside>
 
@@ -524,7 +525,7 @@ function pfLabel(P){
 const PF={
   pay:{mode:'all', year:now.getFullYear(), month:now.getMonth(), from:todayISO(), to:todayISO()},
   exp:{mode:'all', year:now.getFullYear(), month:now.getMonth(), from:todayISO(), to:todayISO()},
-  stud:{mode:'all', year:now.getFullYear(), month:now.getMonth(), from:todayISO(), to:todayISO()}
+  stud:{mode:'all', by:'start', year:now.getFullYear(), month:now.getMonth(), from:todayISO(), to:todayISO()}
 };
 function pfMode(k,m){ PF[k].mode=m; render(); }
 function pfSet(k,f,v){ PF[k][f]=v; render(); }
@@ -783,7 +784,8 @@ function rowAct(ic,title,sub,color){
 let studentFilter='all', studentSearch='';
 function studentList(){
   const [rf,rt]=rangeOf(PF.stud);
-  let list=DB.students.filter(s=>PF.stud.mode==='all'||inRange(s.startDate||'',rf,rt)).sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||'')||(b.createdAt||0)-(a.createdAt||0));
+  const fld=PF.stud.by==='end'?'endDate':'startDate';
+  let list=DB.students.filter(s=>PF.stud.mode==='all'||inRange(s[fld]||'',rf,rt)).sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||'')||(b.createdAt||0)-(a.createdAt||0));
   if(studentFilter!=='all') list=list.filter(s=>s.status===studentFilter);
   if(studentSearch){const q=studentSearch.toLowerCase();list=list.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.phone||'').includes(q)||((courseById(s.courseId)||{}).name||'').toLowerCase().includes(q)||(s.notes||'').toLowerCase().includes(q));}
   return list;
@@ -800,7 +802,7 @@ function viewStudents(){
   <div class="pill-filter" style="margin-bottom:14px">
     ${[['all','Toți'],['in_curs','În curs'],['finalizat','Finalizați'],['abandonat','Abandonați']].map(([k,l])=>`<button class="${studentFilter===k?'active':''}" onclick="studentFilter='${k}';rerenderStudents()">${l} <b>${counts[k]||0}</b></button>`).join('')}
   </div>
-  <div style="color:var(--muted);font-size:12.5px;margin-bottom:10px">Interval după <b>data începerii</b>${PF.stud.mode==='all'?'':' · '+esc(pfLabel(PF.stud))}</div>
+  ${PF.stud.mode==='all'?'':`<div class="period" style="margin:-4px 0 12px"><span style="color:var(--muted);font-size:12.5px">Interval după:</span><div class="seg"><button class="${PF.stud.by!=='end'?'active':''}" onclick="pfSet('stud','by','start')">Început</button><button class="${PF.stud.by==='end'?'active':''}" onclick="pfSet('stud','by','end')">Terminat</button></div><span style="color:var(--muted);font-size:12.5px">· ${esc(pfLabel(PF.stud))}</span></div>`}
   <div id="studentsTable">${studentsTable(studentList())}</div>`;
 }
 function rerenderStudents(){ $('#studentsTable')&&($('#view').innerHTML=viewStudents(),markActive()); }
@@ -808,7 +810,7 @@ function rerenderStudentsTable(){ const el=$('#studentsTable'); if(el) el.innerH
 function studentsTable(list){
   if(!list.length) return `<div class="card empty"><div class="big">🎓</div>Niciun cursant ${studentFilter!=='all'||studentSearch?'pentru filtrul curent':'încă'}.<br>${!studentSearch&&studentFilter==='all'?'<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openStudentModal()">＋ Adaugă primul cursant</button>':''}</div>`;
   return `<div class="table-wrap cards-mobile t-students"><table>
-    <thead><tr><th>Cursant</th><th>Curs</th><th>Început</th><th>Status</th><th class="num">Preț</th><th class="num">Achitat</th><th style="min-width:120px">Progres plată</th><th></th></tr></thead>
+    <thead><tr><th>Cursant</th><th>Curs</th><th>Început</th><th>Terminat</th><th>Status</th><th class="num">Preț</th><th class="num">Achitat</th><th style="min-width:120px">Progres plată</th><th></th></tr></thead>
     <tbody>${list.map(s=>{
       const c=courseById(s.courseId)||{}; const paid=paidFor(s.id); const price=Number(s.price||0);
       const pct=price>0?Math.min(100,Math.round(paid/price*100)):100; const bal=price-paid;
@@ -818,6 +820,7 @@ function studentsTable(list){
         <td><b>${esc(s.name)}</b>${s.phone?`<br><small style="color:var(--muted)">${esc(s.phone)}</small>`:''}</td>
         <td><span class="badge b-gold">${esc(c.name||'—')}</span></td>
         <td>${esc(s.startDate||'—')}</td>
+        <td>${s.endDate?esc(s.endDate):'<small style="color:var(--muted)">—</small>'}</td>
         <td><span class="badge ${stB}">${stL}</span></td>
         <td class="num">${fmt(price)}</td>
         <td class="num" style="color:${bal>0?'var(--warning)':'var(--success)'}">${fmt(paid)}</td>
@@ -828,7 +831,7 @@ function studentsTable(list){
           <button class="icon-btn danger" title="Șterge" onclick="delStudent('${s.id}')">🗑️</button>
         </div></td>
       </tr>`;}).join('')}
-    ${(()=>{const tP=list.reduce((a,s)=>a+Number(s.price||0),0);const tA=list.reduce((a,s)=>a+paidFor(s.id),0);const tR=list.reduce((a,s)=>a+Math.max(0,Number(s.price||0)-paidFor(s.id)),0);return `<tr style="border-top:2px solid var(--border)"><td colspan="4"><b>TOTAL</b> ${(studentSearch||studentFilter!=='all')?'<small style="color:var(--muted)">(rezultate filtrate)</small>':''} <small style="color:var(--muted)">· ${list.length} cursant${list.length===1?'':'i'}</small></td><td class="num"><b>${fmt(tP)}</b></td><td class="num" style="color:var(--success)"><b>${fmt(tA)}</b></td><td>${tR>0?`<small style="color:var(--warning)">rest ${fmt(tR)}</small>`:''}</td><td></td></tr>`;})()}
+    ${(()=>{const tP=list.reduce((a,s)=>a+Number(s.price||0),0);const tA=list.reduce((a,s)=>a+paidFor(s.id),0);const tR=list.reduce((a,s)=>a+Math.max(0,Number(s.price||0)-paidFor(s.id)),0);return `<tr style="border-top:2px solid var(--border)"><td colspan="5"><b>TOTAL</b> ${(studentSearch||studentFilter!=='all')?'<small style="color:var(--muted)">(rezultate filtrate)</small>':''} <small style="color:var(--muted)">· ${list.length} cursant${list.length===1?'':'i'}</small></td><td class="num"><b>${fmt(tP)}</b></td><td class="num" style="color:var(--success)"><b>${fmt(tA)}</b></td><td>${tR>0?`<small style="color:var(--warning)">rest ${fmt(tR)}</small>`:''}</td><td></td></tr>`;})()}
     </tbody>
   </table></div>`;
 }
@@ -851,6 +854,7 @@ function openStudentModal(id){
       <div class="field"><label>Preț total (${CURRENCY}) *</label><input id="f_price" type="number" min="0" value="${s?Number(s.price||0):''}"></div>
       <div class="field"><label>Data începerii</label><input id="f_start" type="date" value="${s?(s.startDate||todayISO()):todayISO()}"></div>
     </div>
+    <div class="field"><label>Data finisării cursului</label><input id="f_end" type="date" value="${esc(s&&s.endDate?s.endDate:'')}"><div class="hint">Opțional — o completezi când cursantul termină cursul.</div></div>
     <div class="field-row">
       <div class="field"><label>Status</label><select id="f_status">${[['in_curs','În curs'],['finalizat','Finalizat'],['abandonat','Abandonat']].map(([k,l])=>`<option value="${k}" ${s&&s.status===k?'selected':(!s&&k==='in_curs'?'selected':'')}>${l}</option>`).join('')}</select></div>
       <div class="field"><label>Profesor</label><select id="f_instr">${instrOpts}</select><div class="hint" style="margin-top:4px">Adaugi profesori în pagina „Profesori".</div></div>
@@ -871,6 +875,7 @@ function saveStudent(id){
   const data={
     name, phone:$('#f_phone').value.trim(), email:$('#f_email').value.trim(),
     courseId, price:Number($('#f_price').value||0), startDate:$('#f_start').value||todayISO(),
+    endDate:$('#f_end').value||'',
     status:$('#f_status').value, instructor:$('#f_instr').value.trim(), notes:$('#f_notes').value.trim(),
   };
   if(id){

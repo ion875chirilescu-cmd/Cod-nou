@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v4.5 · filtru pe categorii cheltuieli</div>
+      <div style="margin-top:4px">v4.6 · sincronizare automată</div>
     </div>
   </aside>
 
@@ -1396,7 +1396,7 @@ function viewSettings(){
   <div class="card" style="margin-bottom:18px;border:1px solid var(--primary)">
     <div class="section-title" style="margin-top:0">☁️ Sincronizare între dispozitive</div>
     ${syncOn?`
-      <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Sincronizare <b style="color:var(--success)">activă</b> prin contul tău GitHub. Aceleași date apar pe toate dispozitivele conectate cu același token și parolă. Ultima sincronizare: ${last}.</p>
+      <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Sincronizare <b style="color:var(--success)">automată activă</b> ⚡ prin contul tău GitHub. Modificările se trimit și se preiau singure (la fiecare schimbare, la deschiderea aplicației și la fiecare ${Math.round(Sync.AUTO_MS/1000)} secunde). Aceleași date apar pe toate dispozitivele conectate cu același token și parolă. Ultima sincronizare: ${last}.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="Sync.pull()">🔄 Reîmprospătează</button>
         <button class="btn btn-ghost btn-sm" onclick="Sync.push()">⬆️ Trimite acum</button>
@@ -1692,7 +1692,7 @@ function _applyRemote(obj, keepDB){
   return {authChanged};
 }
 const Sync={
-  cfg:null, busy:false, _t:null,
+  cfg:null, busy:false, _t:null, _auto:null, _pending:false, _pulling:false, AUTO_MS:25000,
   load(){ try{this.cfg=JSON.parse(localStorage.getItem(SYNC_KEY)||'null');}catch(e){this.cfg=null;} },
   saveCfg(){ localStorage.setItem(SYNC_KEY,JSON.stringify(this.cfg)); },
   on(){ return !!(this.cfg&&this.cfg.token&&this.cfg.gistId); },
@@ -1709,19 +1709,20 @@ const Sync={
       this.cfg={token,pass,gistId:id,lastSync:Date.now()}; this.saveCfg();
       _applyRemote(remote); localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); buildNav(); render();
     }
-    this.setStatus('Sincronizat','ok');
+    this.setStatus('Sincronizat','ok'); this.startAuto();
   },
   async push(){
     if(PREVIEW||!Auth.authed()) return;
     if(!this.on()||this.busy) return; this.busy=true; this.setStatus('Se salvează…');
     try{ await _ghUpdate(this.cfg.token,this.cfg.gistId,{updatedAt:DB.updatedAt||Date.now(),enc:await _encrypt(_syncPayload(),this.cfg.pass)});
-      this.cfg.lastSync=Date.now(); this.saveCfg(); this.setStatus('Sincronizat','ok');
-    }catch(e){ this.setStatus('Offline — salvat local','err'); }
+      this.cfg.lastSync=Date.now(); this.saveCfg(); this._pending=false; this.setStatus('Sincronizat','ok');
+    }catch(e){ this._pending=true; this.setStatus('Offline — se reîncearcă automat','err'); }
     this.busy=false;
   },
   async pull(){
     if(PREVIEW||!Auth.authed()) return; // nu aduce date reale cât timp ești pe ecranul de login (previzualizare demo)
-    if(!this.on()) return; if(document.getElementById('overlay').classList.contains('open')) return;
+    if(!this.on()||this._pulling) return; if(document.getElementById('overlay').classList.contains('open')) return;
+    this._pulling=true;
     try{ const payload=await _ghGet(this.cfg.token,this.cfg.gistId);
       if(!payload||!payload.enc) return;
       const remote=await _decrypt(payload.enc,this.cfg.pass);
@@ -1730,10 +1731,18 @@ const Sync={
       if(newer) localStorage.setItem(KEY,JSON.stringify(DB));
       if(newer||res.authChanged){ renderStamp(); buildNav(); render(); this.setStatus('Sincronizat','ok'); }
     }catch(e){ /* rămâne pe datele locale */ }
+    this._pulling=false;
   },
   schedulePush(){ if(!this.on())return; clearTimeout(this._t); this._t=setTimeout(()=>this.push(),1500); },
-  disconnect(){ this.cfg=null; localStorage.removeItem(SYNC_KEY); this.setStatus(''); render(); toast('Sincronizare oprită pe acest dispozitiv','ok'); },
-  async init(){ this.load(); if(this.on()){ this.setStatus('Se conectează…'); await this.pull(); await this.push(); } }
+  flush(){ if(this._pending) this.push(); },
+  startAuto(){ this.stopAuto(); if(!this.on())return; this._auto=setInterval(()=>{
+      if(!this.on()||PREVIEW||!Auth.authed()) return;
+      if(document.hidden||(navigator.onLine===false)) return;
+      this.pull(); this.flush();
+    }, this.AUTO_MS); },
+  stopAuto(){ if(this._auto){ clearInterval(this._auto); this._auto=null; } },
+  disconnect(){ this.stopAuto(); this.cfg=null; localStorage.removeItem(SYNC_KEY); this.setStatus(''); render(); toast('Sincronizare oprită pe acest dispozitiv','ok'); },
+  async init(){ this.load(); if(this.on()){ this.setStatus('Se conectează…'); await this.pull(); await this.push(); this.startAuto(); } }
 };
 window.Sync=Sync;
 
@@ -2005,7 +2014,7 @@ const Auth={
     PREVIEW=false; DB=load(); this.hide(); route=this.landing(); buildNav(); render(); updateUserLine(); startIdleTimer(); toast('Bun venit, '+u.user+'!','ok');
     if(window.Sync) Sync.pull();
   },
-  logout(reason){ localStorage.removeItem(SESS_KEY); stopIdleTimer(); PREVIEW=true; DB=buildDemoDB(); this.screen=this.has()?'login':'register'; buildNav(); render(); this.show(); updateUserLine(); toast(reason||'Te-ai deconectat','ok'); },
+  logout(reason){ localStorage.removeItem(SESS_KEY); stopIdleTimer(); if(window.Sync)Sync.stopAuto(); PREVIEW=true; DB=buildDemoDB(); this.screen=this.has()?'login':'register'; buildNav(); render(); this.show(); updateUserLine(); toast(reason||'Te-ai deconectat','ok'); },
   addAccountModal(){ if(!this.isOwner()) return; const instrOpts=DB.instructors.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join(''); modal('Adaugă cont nou',`
       <div class="field"><label>Utilizator *</label><input id="na_user" placeholder="nume utilizator"></div>
       <div class="field"><label>Parolă *</label><input id="na_pass" type="password" placeholder="minim 4 caractere"></div>
@@ -2155,8 +2164,9 @@ async function installApp(){
   try{ const paired=await tryPairFromHash(); if(paired){ DB=buildDemoDB(); Auth.boot(); } }catch(e){}
   Sync.init();
 })();
-window.addEventListener('focus',()=>Sync.pull());
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) Sync.pull(); });
+window.addEventListener('focus',()=>{ Sync.pull(); Sync.flush(); });
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ Sync.pull(); Sync.flush(); } });
+window.addEventListener('online',()=>{ Sync.setStatus('Reconectat — se sincronizează…'); Sync.pull(); Sync.flush(); });
 </script>
 </body>
 </html>

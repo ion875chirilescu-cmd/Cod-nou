@@ -378,7 +378,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v4.1 · login simplificat</div>
+      <div style="margin-top:4px">v4.2 · interval pe fiecare mapă</div>
     </div>
   </aside>
 
@@ -507,6 +507,38 @@ function periodLabel(){
   return PERIOD.from+' → '+PERIOD.to;
 }
 function inRange(dateStr,f,t){ return dateStr>=f && dateStr<=t; }
+
+/* Filtre de interval PER PAGINĂ (Încasări, Cheltuieli, Cursanți) — independente */
+function rangeOf(P){
+  if(P.mode==='month'){ const f=new Date(P.year,P.month,1); const t=new Date(P.year,P.month+1,0); return [f.toISOString().slice(0,10), t.toISOString().slice(0,10)]; }
+  if(P.mode==='year'){ return [P.year+'-01-01', P.year+'-12-31']; }
+  if(P.mode==='custom'){ return [P.from||'0000-01-01', P.to||'9999-12-31']; }
+  return ['0000-01-01','9999-12-31']; // tot
+}
+function pfLabel(P){
+  if(P.mode==='month') return MONTHS_FULL[P.month]+' '+P.year;
+  if(P.mode==='year') return 'Anul '+P.year;
+  if(P.mode==='custom') return (P.from||'…')+' → '+(P.to||'…');
+  return 'toată perioada';
+}
+const PF={
+  pay:{mode:'all', year:now.getFullYear(), month:now.getMonth(), from:todayISO(), to:todayISO()},
+  exp:{mode:'all', year:now.getFullYear(), month:now.getMonth(), from:todayISO(), to:todayISO()},
+  stud:{mode:'all', year:now.getFullYear(), month:now.getMonth(), from:todayISO(), to:todayISO()}
+};
+function pfMode(k,m){ PF[k].mode=m; render(); }
+function pfSet(k,f,v){ PF[k][f]=v; render(); }
+function pfWidget(k){
+  const P=PF[k];
+  const yrs=[]; for(let y=now.getFullYear();y>=now.getFullYear()-6;y--) yrs.push(y);
+  const lbl={all:'Tot',month:'Lună',year:'An',custom:'Interval'};
+  return `<div class="period" style="margin-bottom:14px">
+    <div class="seg">${['all','month','year','custom'].map(m=>`<button class="${P.mode===m?'active':''}" onclick="pfMode('${k}','${m}')">${lbl[m]}</button>`).join('')}</div>
+    ${P.mode==='month'?`<select onchange="pfSet('${k}','month',+this.value)">${MONTHS_FULL.map((mm,i)=>`<option value="${i}" ${i===P.month?'selected':''}>${mm}</option>`).join('')}</select><select onchange="pfSet('${k}','year',+this.value)">${yrs.map(y=>`<option ${y===P.year?'selected':''}>${y}</option>`).join('')}</select>`:''}
+    ${P.mode==='year'?`<select onchange="pfSet('${k}','year',+this.value)">${yrs.map(y=>`<option ${y===P.year?'selected':''}>${y}</option>`).join('')}</select>`:''}
+    ${P.mode==='custom'?`<input type="date" value="${P.from}" onchange="pfSet('${k}','from',this.value)"><input type="date" value="${P.to}" onchange="pfSet('${k}','to',this.value)">`:''}
+  </div>`;
+}
 
 /* aggregate income/expense/profit + students for a range */
 function aggregate(f,t){
@@ -750,7 +782,8 @@ function rowAct(ic,title,sub,color){
 /* ---------- STUDENTS ---------- */
 let studentFilter='all', studentSearch='';
 function studentList(){
-  let list=DB.students.slice().sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||'')||(b.createdAt||0)-(a.createdAt||0));
+  const [rf,rt]=rangeOf(PF.stud);
+  let list=DB.students.filter(s=>PF.stud.mode==='all'||inRange(s.startDate||'',rf,rt)).sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||'')||(b.createdAt||0)-(a.createdAt||0));
   if(studentFilter!=='all') list=list.filter(s=>s.status===studentFilter);
   if(studentSearch){const q=studentSearch.toLowerCase();list=list.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.phone||'').includes(q)||((courseById(s.courseId)||{}).name||'').toLowerCase().includes(q)||(s.notes||'').toLowerCase().includes(q));}
   return list;
@@ -763,9 +796,11 @@ function viewStudents(){
     <input class="search" placeholder="🔎 Caută după nume, telefon, curs, notițe…" value="${esc(studentSearch)}" oninput="studentSearch=this.value;rerenderStudentsTable()">
     <button class="btn btn-primary" onclick="openStudentModal()">＋ Cursant nou</button>
   </div>
+  ${pfWidget('stud')}
   <div class="pill-filter" style="margin-bottom:14px">
     ${[['all','Toți'],['in_curs','În curs'],['finalizat','Finalizați'],['abandonat','Abandonați']].map(([k,l])=>`<button class="${studentFilter===k?'active':''}" onclick="studentFilter='${k}';rerenderStudents()">${l} <b>${counts[k]||0}</b></button>`).join('')}
   </div>
+  <div style="color:var(--muted);font-size:12.5px;margin-bottom:10px">Interval după <b>data începerii</b>${PF.stud.mode==='all'?'':' · '+esc(pfLabel(PF.stud))}</div>
   <div id="studentsTable">${studentsTable(studentList())}</div>`;
 }
 function rerenderStudents(){ $('#studentsTable')&&($('#view').innerHTML=viewStudents(),markActive()); }
@@ -898,24 +933,27 @@ function savePayment(payId){
 }
 let paymentSearch='';
 function paymentList(){
-  let list=DB.payments.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+  const [rf,rt]=rangeOf(PF.pay);
+  let list=DB.payments.filter(p=>inRange(p.date||'',rf,rt)).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
   if(paymentSearch){const q=paymentSearch.toLowerCase();list=list.filter(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;return (s?s.name:'').toLowerCase().includes(q)||(c?c.name:'').toLowerCase().includes(q)||(p.method||'').toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q)||(p.date||'').includes(q);});}
   return list;
 }
 function viewPayments(){
-  const total=DB.payments.reduce((a,p)=>a+Number(p.amount||0),0);
+  const [rf,rt]=rangeOf(PF.pay);
+  const total=DB.payments.filter(p=>inRange(p.date||'',rf,rt)).reduce((a,p)=>a+Number(p.amount||0),0);
   return `
   <div class="toolbar">
-    <div class="card kpi green" style="padding:12px 18px;flex:1;min-width:180px"><div class="label">Total încasări (istoric)</div><div class="value" style="font-size:22px">${fmt(total)}</div></div>
+    <div class="card kpi green" style="padding:12px 18px;flex:1;min-width:180px"><div class="label">Total încasări · ${PF.pay.mode==='all'?'istoric':esc(pfLabel(PF.pay))}</div><div class="value" style="font-size:22px">${fmt(total)}</div></div>
     <button class="btn btn-primary" onclick="openPaymentModal()" ${DB.students.length?'':'disabled style=opacity:.5'}>＋ Încasare</button>
   </div>
   ${!DB.payments.length?`<div class="card empty"><div class="big">💰</div>Nicio încasare înregistrată.</div>`:`
+  ${pfWidget('pay')}
   <input class="search block" placeholder="🔎 Caută după cursant, curs, metodă, notă, dată…" value="${esc(paymentSearch)}" oninput="paymentSearch=this.value;rerenderPayments()">
   <div id="paymentsList">${paymentsTable(paymentList())}</div>`}`;
 }
 function rerenderPayments(){ const el=$('#paymentsList'); if(el) el.innerHTML=paymentsTable(paymentList()); }
 function paymentsTable(list){
-  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio încasare găsită pentru „${esc(paymentSearch)}”.</div>`;
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio încasare ${PF.pay.mode==='all'?'':'în '+esc(pfLabel(PF.pay))+' '}${paymentSearch?`pentru „${esc(paymentSearch)}”`:'în acest interval'}.</div>`;
   const sum=list.reduce((a,p)=>a+Number(p.amount||0),0);
   return `<div class="table-wrap cards-mobile t-payments"><table>
     <thead><tr><th>Data</th><th>Cursant</th><th>Curs</th><th>Metodă</th><th>Notă</th><th class="num">Sumă</th><th></th></tr></thead>
@@ -960,19 +998,23 @@ function saveExpense(id){
 }
 let expenseSearch='';
 function expenseList(){
-  let list=DB.expenses.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const [rf,rt]=rangeOf(PF.exp);
+  let list=DB.expenses.filter(e=>inRange(e.date||'',rf,rt)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(expenseSearch){const q=expenseSearch.toLowerCase();list=list.filter(e=>(e.description||'').toLowerCase().includes(q)||(e.category||'').toLowerCase().includes(q)||(e.date||'').includes(q));}
   return list;
 }
 function viewExpenses(){
-  const total=DB.expenses.reduce((a,e)=>a+Number(e.amount||0),0);
-  const byCat={}; DB.expenses.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0));
+  const [rf,rt]=rangeOf(PF.exp);
+  const inRangeExp=DB.expenses.filter(e=>inRange(e.date||'',rf,rt));
+  const total=inRangeExp.reduce((a,e)=>a+Number(e.amount||0),0);
+  const byCat={}; inRangeExp.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0));
   const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
   return `
   <div class="toolbar">
-    <div class="card kpi red" style="padding:12px 18px;flex:1;min-width:180px"><div class="label">Total cheltuieli (istoric)</div><div class="value" style="font-size:22px">${fmt(total)}</div></div>
+    <div class="card kpi red" style="padding:12px 18px;flex:1;min-width:180px"><div class="label">Total cheltuieli · ${PF.exp.mode==='all'?'istoric':esc(pfLabel(PF.exp))}</div><div class="value" style="font-size:22px">${fmt(total)}</div></div>
     <button class="btn btn-primary" onclick="openExpenseModal()">＋ Cheltuială</button>
   </div>
+  ${!DB.expenses.length?'':pfWidget('exp')}
   ${cats.length?`<div class="grid kpis" style="margin-bottom:18px">${cats.slice(0,4).map(([c,v])=>`<div class="card kpi"><div class="label">${esc(c)}</div><div class="value" style="font-size:20px;color:var(--text)">${fmt(v)}</div></div>`).join('')}</div>`:''}
   ${!DB.expenses.length?`<div class="card empty"><div class="big">🧾</div>Nicio cheltuială înregistrată.</div>`:`
   <input class="search block" placeholder="🔎 Caută după descriere, categorie, dată…" value="${esc(expenseSearch)}" oninput="expenseSearch=this.value;rerenderExpenses()">
@@ -980,7 +1022,7 @@ function viewExpenses(){
 }
 function rerenderExpenses(){ const el=$('#expensesList'); if(el) el.innerHTML=expensesTable(expenseList()); }
 function expensesTable(list){
-  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio cheltuială găsită pentru „${esc(expenseSearch)}”.</div>`;
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Nicio cheltuială ${PF.exp.mode==='all'?'':'în '+esc(pfLabel(PF.exp))+' '}${expenseSearch?`pentru „${esc(expenseSearch)}”`:'în acest interval'}.</div>`;
   const sum=list.reduce((a,e)=>a+Number(e.amount||0),0);
   return `<div class="table-wrap cards-mobile t-expenses"><table>
     <thead><tr><th>Data</th><th>Categorie</th><th>Descriere</th><th class="num">Sumă</th><th></th></tr></thead>

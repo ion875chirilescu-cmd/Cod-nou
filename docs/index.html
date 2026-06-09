@@ -379,7 +379,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v4.3 · data finisării cursului</div>
+      <div style="margin-top:4px">v4.4 · rămâi conectat</div>
     </div>
   </aside>
 
@@ -2087,18 +2087,11 @@ function updateUserLine(){
   document.querySelectorAll('.user-line').forEach(el=>el.innerHTML=html);
 }
 
-/* Deconectare automată după inactivitate (10 minute) */
-const IDLE_MS=10*60*1000;
+/* Sesiunea rămâne activă până ieși manual — fără deconectare automată */
 let _idleTimer=null;
-function resetIdleTimer(){
-  if(!Auth.authed()) return;
-  clearTimeout(_idleTimer);
-  _idleTimer=setTimeout(()=>{ if(Auth.authed()) Auth.logout('Deconectat automat după 10 min de inactivitate'); }, IDLE_MS);
-}
-function startIdleTimer(){ resetIdleTimer(); }
+function resetIdleTimer(){ /* dezactivat: rămâi conectat */ }
+function startIdleTimer(){ /* dezactivat: rămâi conectat */ }
 function stopIdleTimer(){ clearTimeout(_idleTimer); _idleTimer=null; }
-['click','keydown','mousemove','touchstart','scroll'].forEach(ev=>
-  document.addEventListener(ev,()=>{ if(_idleTimer!==null||Auth.authed()) resetIdleTimer(); },{passive:true}));
 
 /* Conectare automată a unui dispozitiv nou printr-un link (#pair=...) generat de proprietar */
 async function tryPairFromHash(){

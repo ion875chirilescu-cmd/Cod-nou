@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v4.6 · sincronizare automată</div>
+      <div style="margin-top:4px">v4.7 · protecție date la sincronizare</div>
     </div>
   </aside>
 
@@ -467,6 +467,7 @@ function load(){
   }catch(e){ return blankDB(); }
 }
 function save(){ if(PREVIEW) return; DB.updatedAt=Date.now(); localStorage.setItem(KEY,JSON.stringify(DB)); renderStamp(); if(window.Sync) Sync.schedulePush(); }
+function dbEmpty(d){ d=d||DB; return !(((d.students||[]).length)||((d.payments||[]).length)||((d.expenses||[]).length)); }
 
 /* ============================================================
    HELPERS
@@ -1713,7 +1714,9 @@ const Sync={
   },
   async push(){
     if(PREVIEW||!Auth.authed()) return;
-    if(!this.on()||this.busy) return; this.busy=true; this.setStatus('Se salvează…');
+    if(!this.on()||this.busy) return;
+    if(dbEmpty()){ this._pending=false; this.setStatus('Sincronizat','ok'); return; } // nu suprascrie datele din cloud cu o bază goală
+    this.busy=true; this.setStatus('Se salvează…');
     try{ await _ghUpdate(this.cfg.token,this.cfg.gistId,{updatedAt:DB.updatedAt||Date.now(),enc:await _encrypt(_syncPayload(),this.cfg.pass)});
       this.cfg.lastSync=Date.now(); this.saveCfg(); this._pending=false; this.setStatus('Sincronizat','ok');
     }catch(e){ this._pending=true; this.setStatus('Offline — se reîncearcă automat','err'); }
@@ -1726,7 +1729,9 @@ const Sync={
     try{ const payload=await _ghGet(this.cfg.token,this.cfg.gistId);
       if(!payload||!payload.enc) return;
       const remote=await _decrypt(payload.enc,this.cfg.pass);
-      const newer=payload.updatedAt && payload.updatedAt>(DB.updatedAt||0);
+      const remoteHasData=remote&&((remote.db&&!dbEmpty(remote.db))||(remote.students&&!dbEmpty(remote)));
+      // adoptă cloud-ul dacă e mai nou SAU dacă pe acest dispozitiv baza e goală iar în cloud există date
+      const newer=(payload.updatedAt && payload.updatedAt>(DB.updatedAt||0)) || (dbEmpty()&&remoteHasData);
       const res=_applyRemote(remote, !newer); // dacă nu e mai nou, păstrează DB local dar tot îmbină conturile
       if(newer) localStorage.setItem(KEY,JSON.stringify(DB));
       if(newer||res.authChanged){ renderStamp(); buildNav(); render(); this.setStatus('Sincronizat','ok'); }

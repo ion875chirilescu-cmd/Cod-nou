@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v5.3 · fix pagina setări</div>
+      <div style="margin-top:4px">v5.4 · dispozitiv nou prin login</div>
     </div>
   </aside>
 
@@ -1384,8 +1384,9 @@ function viewSettingsLimited(){
     <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Instaleaz-o pe telefon ca pe o aplicație: iconiță pe ecran, se deschide pe tot ecranul și merge și fără internet.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="installApp()">📲 Instalează aplicația</button>
-      ${Sync.on()?`<button class="btn btn-ghost" onclick="syncPairDevice()">🔗 Conectează un dispozitiv nou</button>`:''}
+      ${(Sync.on()&&!sbOn)?`<button class="btn btn-ghost" onclick="syncPairDevice()">🔗 Conectează un dispozitiv nou</button>`:''}
     </div>
+    ${sbOn?`<div class="hint" style="margin-top:10px">📲 Pe un dispozitiv nou nu trebuie să „conectezi" nimic: deschizi aplicația și te <b>loghezi cu utilizatorul și parola ta</b> — vezi automat datele tale.</div>`:''}
     <div class="section-title">ℹ️ Despre</div>
     <p style="color:var(--muted);font-size:13.5px"><b style="color:var(--text)">Select Academy CRM</b> — gestiune cursanți și finanțe.<br>Pentru setări avansate și ștergeri, contactează proprietarul.</p>
   </div>`;

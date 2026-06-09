@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v4.7 · protecție date la sincronizare</div>
+      <div style="margin-top:4px">v4.8 · recuperare date din cloud</div>
     </div>
   </aside>
 
@@ -1424,6 +1424,7 @@ function viewSettings(){
         <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
         <button class="btn btn-ghost" onclick="exportExcel()">📑 Export Excel (.xlsx)</button>
       </div>
+      ${Sync.on()?`<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)"><button class="btn btn-ghost btn-sm" onclick="syncRecoverHistory()">🛟 Recuperează datele din istoricul cloud</button><div class="hint" style="margin-top:6px">Dacă datele au dispărut, caut în versiunile vechi din cloud ultima copie cu date și o restaurez.</div></div>`:''}
       <div class="hint" style="margin-top:12px">Dimensiune date: ${sz} KB · ${DB.students.length} cursanți · ${DB.payments.length} încasări · ${DB.expenses.length} cheltuieli</div>
     </div>
     <div class="card">
@@ -1774,6 +1775,42 @@ async function doSyncConnect(){
   catch(e){ toast(e&&e.message?e.message:'Eroare la conectare','err'); const b=$('#gh_go'); if(b){b.textContent='Conectează';b.disabled=false;} }
 }
 function syncDisconnect(){ confirmModal('Oprești sincronizarea pe acest dispozitiv?','Datele rămân salvate local aici. Celelalte dispozitive continuă sincronizarea.',()=>Sync.disconnect()); }
+async function syncRecoverHistory(){
+  if(!Sync.on()){ toast('Sincronizarea nu e activă pe acest dispozitiv','err'); return; }
+  modal('🛟 Recuperare date din cloud','<pre id="recvLog" style="white-space:pre-wrap;font-size:13px;line-height:1.6;color:var(--text);margin:0">Caut copii cu date în istoric…</pre>','<button class="btn btn-ghost" id="recvClose" onclick="closeModal()">Închide</button>');
+  const log=[]; const upd=()=>{ const el=document.getElementById('recvLog'); if(el) el.textContent=log.join('\n'); };
+  try{
+    log.push('⏳ Citesc istoricul din cloud…'); upd();
+    const r=await fetch(GH_API+'/gists/'+Sync.cfg.gistId,{headers:_ghH(Sync.cfg.token)});
+    if(!r.ok) throw new Error('Nu pot citi istoricul (cod '+r.status+')');
+    const j=await r.json();
+    const hist=Array.isArray(j.history)?j.history:[];
+    log.push('🔎 '+hist.length+' versiuni găsite. Verific de la cea mai nouă…'); upd();
+    let found=null;
+    for(let i=0;i<hist.length;i++){
+      const ver=hist[i].version; if(!ver) continue;
+      try{
+        const rr=await fetch(GH_API+'/gists/'+Sync.cfg.gistId+'/'+ver,{headers:_ghH(Sync.cfg.token)});
+        if(!rr.ok) continue;
+        const jj=await rr.json(); const f=jj.files&&jj.files[GIST_FILE]; if(!f) continue;
+        let content=f.content; if(f.truncated&&f.raw_url){ content=await (await fetch(f.raw_url)).text(); }
+        const payload=JSON.parse(content); if(!payload||!payload.enc) continue;
+        const remote=await _decrypt(payload.enc,Sync.cfg.pass);
+        const db=remote&&remote.db?remote.db:(remote&&remote.students?remote:null);
+        if(db&&!dbEmpty(db)){
+          found={db, when:hist[i].committed_at};
+          log.push('✅ Găsit! Copie din '+new Date(hist[i].committed_at).toLocaleString('ro-RO')+' — '+(db.students||[]).length+' cursanți, '+(db.payments||[]).length+' încasări, '+(db.expenses||[]).length+' cheltuieli.'); upd();
+          break;
+        }
+      }catch(e){ /* trec la versiunea următoare */ }
+    }
+    if(!found){ log.push('⚠️ Nu am găsit nicio versiune cu date în istoric.'); upd(); return; }
+    log.push(''); log.push('Apasă „Restaurează" ca să aduci înapoi această copie.'); upd();
+    const btn=document.getElementById('recvClose');
+    if(btn){ btn.outerHTML='<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" id="recvDo">↩️ Restaurează</button>';
+      const d=document.getElementById('recvDo'); if(d) d.onclick=()=>{ DB=found.db; DB.updatedAt=Date.now(); save(); _syncPushNow().catch(()=>{}); closeModal(); buildNav(); render(); toast('Date restaurate ✓','ok'); }; }
+  }catch(e){ log.push('❌ '+(e&&e.message?e.message:'Eroare la recuperare')); upd(); }
+}
 function syncPairDevice(){
   if(!Sync.on()){ toast('Întâi activează sincronizarea','err'); return; }
   const data=btoa(unescape(encodeURIComponent(JSON.stringify({t:Sync.cfg.token,p:Sync.cfg.pass}))));

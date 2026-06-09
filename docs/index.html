@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v5.0 · server central (Supabase)</div>
+      <div style="margin-top:4px">v5.1 · feedback sincronizare server</div>
     </div>
   </aside>
 
@@ -1401,8 +1401,8 @@ function viewSettings(){
     <p style="color:var(--muted);font-size:13.5px;margin-bottom:12px">Contul și datele tale sunt pe <b style="color:var(--success)">serverul central (Supabase)</b>. Intri cu <b>utilizator + parolă pe orice dispozitiv</b> și vezi aceleași date. Modificările se sincronizează <b>automat și live</b>.</p>
     <div id="syncStatus" style="margin-bottom:10px"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-ghost btn-sm" onclick="Cloud.pull()">🔄 Reîmprospătează</button>
-      <button class="btn btn-ghost btn-sm" onclick="Cloud.push()">⬆️ Trimite acum</button>
+      <button class="btn btn-ghost btn-sm" onclick="cloudPullNow()">🔄 Reîmprospătează</button>
+      <button class="btn btn-ghost btn-sm" onclick="cloudPushNow()">⬆️ Trimite acum</button>
     </div>
     <div class="hint" style="margin-top:12px">Nu mai ai nevoie de token sau de linkuri de conectare — pe un dispozitiv nou deschizi aplicația și te loghezi direct.</div>
   </div>`; }
@@ -1777,7 +1777,22 @@ function sbInit(){
   catch(e){ sbOn=false; }
   return sbOn;
 }
-function cloudStatus(s,cls){ const el=document.getElementById('syncStatus'); if(el){ el.textContent=s?('☁️ '+s):''; el.style.color=cls==='err'?'var(--danger)':cls==='ok'?'var(--success)':'var(--muted)'; } }
+function cloudStatus(s,cls){ document.querySelectorAll('#syncStatus').forEach(el=>{ el.textContent=s?('☁️ '+s):''; el.style.color=cls==='err'?'var(--danger)':cls==='ok'?'var(--success)':'var(--muted)'; }); }
+async function cloudPushNow(){
+  if(!sbOn) return toast('Serverul central nu e activ','err');
+  if(!Auth.authed()) return toast('Trebuie să fii autentificat','err');
+  toast('Se trimite pe server…');
+  Cloud._pending=false; Cloud.busy=false;
+  await Cloud.push();
+  if(Cloud._pending) toast('Nu a mers — probabil tabelul nu e creat încă. Rulează SQL-ul în Supabase.','err');
+  else toast('Datele au fost trimise pe server ✓','ok');
+}
+async function cloudPullNow(){
+  if(!sbOn) return toast('Serverul central nu e activ','err');
+  toast('Se reîmprospătează de pe server…');
+  await Cloud.pull();
+  toast('Reîmprospătat de pe server ✓','ok');
+}
 // aplică o linie venită din cloud peste starea locală (conturi + date), cu protecții
 function applyCloud(row){
   if(!row) return false;

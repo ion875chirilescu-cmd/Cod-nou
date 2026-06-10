@@ -19,6 +19,11 @@ export function getSelectedAgent(chatId: number): Agent {
   return getAgent(selectedAgents.get(chatId) ?? DEFAULT_AGENT_ID);
 }
 
+/** Adevărat dacă acest chat și-a ales deja explicit un agent. */
+export function hasSelectedAgent(chatId: number): boolean {
+  return selectedAgents.has(chatId);
+}
+
 export function selectAgent(chatId: number, agentId: string): Agent {
   selectedAgents.set(chatId, agentId);
   histories.delete(chatId); // conversație nouă pentru noul agent

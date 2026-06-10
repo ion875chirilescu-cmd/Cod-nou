@@ -16,8 +16,8 @@ import {
   startFlow,
   handleFlowInput,
 } from './flows.js';
-import { ask, selectAgent, getSelectedAgent, resetHistory } from './ai.js';
-import { AGENTS } from './agents.js';
+import { ask, selectAgent, getSelectedAgent, hasSelectedAgent, resetHistory } from './ai.js';
+import { AGENTS, getAgent } from './agents.js';
 import { streamReply } from './reply.js';
 import {
   listAppointments,
@@ -162,6 +162,22 @@ bot.action('mkt_ideas', async (ctx) => {
   if (ctx.chat) await startFlow(ctx, ctx.chat.id, ideasFlow);
 });
 
+// ── Vânzări Masterclass (pentru grup) ──
+// Generează misiunea de azi pentru echipă — gata de postat în grup.
+bot.command('misiune', async (ctx) => {
+  if (!aiEnabled) {
+    await ctx.reply('🤖 Adaugă „ANTHROPIC_API_KEY" ca să folosești agentul de vânzări.');
+    return;
+  }
+  const ctxText = ctx.payload?.trim();
+  const prompt =
+    'Dă echipei din grup MISIUNEA DE AZI ca să vândă cât mai multe bilete la Masterclass.' +
+    (ctxText ? ` Context: ${ctxText}.` : '') +
+    ' Include: 🎯 un obiectiv clar, ✅ 3-5 sarcini concrete pe care fiecare membru să le facă azi,' +
+    ' 💬 1-2 mesaje gata de trimis (DM/story) și 🔥 o încurajare scurtă. Scrie ca să fie postat direct în grup.';
+  await streamReply(ctx, (onUpdate) => ask(ctx.chat.id, prompt, onUpdate, getAgent('masterclass')));
+});
+
 // ── Agenți AI ──
 bot.hears('🤖 Asistent AI', async (ctx) => {
   const current = getSelectedAgent(ctx.chat.id);
@@ -189,6 +205,7 @@ bot.action(/^agent:(.+)$/, async (ctx) => {
 bot.on(message('text'), async (ctx) => {
   const chatId = ctx.chat.id;
   const text = ctx.message.text;
+  const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
   // Ignoră textul butoanelor de meniu (sunt tratate de bot.hears de mai sus).
   if (text.startsWith('/')) return;
@@ -199,12 +216,31 @@ bot.on(message('text'), async (ctx) => {
     return;
   }
 
-  // Altfel, întreabă agentul AI curent.
   if (!aiEnabled) {
-    await ctx.reply('🤖 Asistentul AI nu e configurat. Folosește meniul sau /ajutor pentru comenzi.');
+    if (!isGroup) {
+      await ctx.reply('🤖 Asistentul AI nu e configurat. Folosește meniul sau /ajutor pentru comenzi.');
+    }
     return;
   }
-  await streamReply(ctx, (onUpdate) => ask(chatId, text, onUpdate));
+
+  let prompt = text;
+
+  if (isGroup) {
+    // În grup răspunde DOAR când e chemat: menționat (@bot) sau i se răspunde (reply).
+    const username = ctx.botInfo?.username;
+    const mentioned = username ? text.includes(`@${username}`) : false;
+    const repliedToBot = ctx.message.reply_to_message?.from?.id === ctx.botInfo?.id;
+    if (!mentioned && !repliedToBot) return; // conversație între membri — ignoră
+
+    // Implicit, în grup agentul este antrenorul de vânzări Masterclass.
+    if (!hasSelectedAgent(chatId)) selectAgent(chatId, 'masterclass');
+
+    // Curăță mențiunea din text.
+    if (username) prompt = text.split(`@${username}`).join('').trim();
+    if (!prompt) prompt = 'Dă echipei instrucțiuni concrete ca să vândă cât mai multe bilete la Masterclass azi.';
+  }
+
+  await streamReply(ctx, (onUpdate) => ask(chatId, prompt, onUpdate));
 });
 
 // ── Pornire ──

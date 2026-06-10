@@ -1,7 +1,15 @@
 import { Telegraf, Markup } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { config, aiEnabled } from './config.js';
-import { mainMenu, welcome, helpText } from './menu.js';
+import {
+  mainMenu,
+  welcome,
+  helpText,
+  appointmentsMenu,
+  clientsMenu,
+  academyMenu,
+  marketingMenu,
+} from './menu.js';
 import {
   hasFlow,
   cancelFlow,
@@ -19,7 +27,7 @@ import {
 import { listClients, addClientFlow } from './features/clients.js';
 import { listStudents, listCourses, addStudentFlow } from './features/academy.js';
 import { formatStats } from './features/stats.js';
-import { generatePost, generateIdeas } from './features/marketing.js';
+import { generatePost, generateIdeas, postFlow, ideasFlow } from './features/marketing.js';
 
 const bot = new Telegraf(config.botToken);
 
@@ -68,8 +76,20 @@ async function showAppointments(ctx: any) {
   await ctx.reply(text, { parse_mode: 'Markdown', ...(keyboard ?? {}) });
 }
 bot.command('programari', showAppointments);
-bot.hears('📅 Programări', showAppointments);
 bot.command('adauga_programare', (ctx) => startFlow(ctx, ctx.chat.id, addAppointmentFlow));
+
+// Mapa „Programări"
+bot.hears('📅 Programări', (ctx) =>
+  ctx.reply(appointmentsMenu.text, { parse_mode: 'Markdown', ...appointmentsMenu.keyboard }),
+);
+bot.action('apt_add', async (ctx) => {
+  await ctx.answerCbQuery();
+  if (ctx.chat) await startFlow(ctx, ctx.chat.id, addAppointmentFlow);
+});
+bot.action('apt_list', async (ctx) => {
+  await ctx.answerCbQuery();
+  await showAppointments(ctx);
+});
 
 bot.action(/^apt_done:(.+)$/, async (ctx) => {
   const apt = setAppointmentStatus(ctx.match[1], 'finalizata');
@@ -84,18 +104,42 @@ bot.action(/^apt_cancel:(.+)$/, async (ctx) => {
 
 // ── Clienți ──
 bot.command('clienti', (ctx) => ctx.reply(listClients(), { parse_mode: 'Markdown' }));
-bot.hears('👥 Clienți', (ctx) => ctx.reply(listClients(), { parse_mode: 'Markdown' }));
 bot.command('adauga_client', (ctx) => startFlow(ctx, ctx.chat.id, addClientFlow));
 
+// Mapa „Clienți"
+bot.hears('👥 Clienți', (ctx) =>
+  ctx.reply(clientsMenu.text, { parse_mode: 'Markdown', ...clientsMenu.keyboard }),
+);
+bot.action('cli_add', async (ctx) => {
+  await ctx.answerCbQuery();
+  if (ctx.chat) await startFlow(ctx, ctx.chat.id, addClientFlow);
+});
+bot.action('cli_list', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(listClients(), { parse_mode: 'Markdown' });
+});
+
 // ── Academy ──
-async function showAcademy(ctx: any) {
-  await ctx.reply(listStudents(), { parse_mode: 'Markdown' });
-  await ctx.reply(listCourses(), { parse_mode: 'Markdown' });
-}
 bot.command('cursanti', (ctx) => ctx.reply(listStudents(), { parse_mode: 'Markdown' }));
 bot.command('cursuri', (ctx) => ctx.reply(listCourses(), { parse_mode: 'Markdown' }));
 bot.command('adauga_cursant', (ctx) => startFlow(ctx, ctx.chat.id, addStudentFlow));
-bot.hears('🎓 Academy', showAcademy);
+
+// Mapa „Academy"
+bot.hears('🎓 Academy', (ctx) =>
+  ctx.reply(academyMenu.text, { parse_mode: 'Markdown', ...academyMenu.keyboard }),
+);
+bot.action('aca_add', async (ctx) => {
+  await ctx.answerCbQuery();
+  if (ctx.chat) await startFlow(ctx, ctx.chat.id, addStudentFlow);
+});
+bot.action('aca_students', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(listStudents(), { parse_mode: 'Markdown' });
+});
+bot.action('aca_courses', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(listCourses(), { parse_mode: 'Markdown' });
+});
 
 // ── Statistici ──
 bot.command('statistici', (ctx) => ctx.reply(formatStats(), { parse_mode: 'Markdown' }));
@@ -104,14 +148,18 @@ bot.hears('📊 Statistici', (ctx) => ctx.reply(formatStats(), { parse_mode: 'Ma
 // ── Marketing (AI) ──
 bot.command('postare', (ctx) => generatePost(ctx, ctx.chat.id, ctx.payload ?? ''));
 bot.command('idei', (ctx) => generateIdeas(ctx, ctx.chat.id, ctx.payload ?? ''));
-bot.hears('✨ Marketing', async (ctx) => {
-  await ctx.reply(
-    '✨ *Marketing AI*\n\n' +
-      '• `/postare [temă]` — postare social media gata de publicat\n' +
-      '• `/idei [context]` — idei de campanii și promoții\n\n' +
-      'Sau alege agentul *📣 Marketing* / *✍️ Content* din 🤖 Asistent AI și scrie liber.',
-    { parse_mode: 'Markdown' },
-  );
+
+// Mapa „Marketing"
+bot.hears('✨ Marketing', (ctx) =>
+  ctx.reply(marketingMenu.text, { parse_mode: 'Markdown', ...marketingMenu.keyboard }),
+);
+bot.action('mkt_post', async (ctx) => {
+  await ctx.answerCbQuery();
+  if (ctx.chat) await startFlow(ctx, ctx.chat.id, postFlow);
+});
+bot.action('mkt_ideas', async (ctx) => {
+  await ctx.answerCbQuery();
+  if (ctx.chat) await startFlow(ctx, ctx.chat.id, ideasFlow);
 });
 
 // ── Agenți AI ──

@@ -14,8 +14,15 @@ export interface Step {
 
 export interface FlowDef {
   steps: Step[];
-  /** Apelat la final cu datele colectate. Întoarce mesajul de confirmare. */
-  finish: (data: Record<string, unknown>) => string | Promise<string>;
+  /**
+   * Apelat la final cu datele colectate și contextul.
+   * Dacă întoarce un text, botul îl trimite ca mesaj de confirmare.
+   * Dacă întoarce void, finalizatorul și-a trimis singur răspunsul (ex. AI).
+   */
+  finish: (
+    data: Record<string, unknown>,
+    ctx: Context,
+  ) => string | void | Promise<string | void>;
 }
 
 interface ActiveFlow {
@@ -76,8 +83,10 @@ export async function handleFlowInput(ctx: Context, chatId: number, text: string
 
   // Flux complet.
   active.delete(chatId);
-  const confirmation = await flow.def.finish(flow.data);
-  await ctx.reply(confirmation, { parse_mode: 'Markdown' });
+  const confirmation = await flow.def.finish(flow.data, ctx);
+  if (typeof confirmation === 'string' && confirmation.length > 0) {
+    await ctx.reply(confirmation, { parse_mode: 'Markdown' });
+  }
   return true;
 }
 

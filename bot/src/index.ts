@@ -164,11 +164,33 @@ bot.catch((err, ctx) => {
   console.error(`Eroare la procesarea update-ului ${ctx.updateType}:`, err);
 });
 
-bot.launch(() => {
+function onStart() {
   console.log('🤖 SELECT BOT pornit.');
   console.log(`   AI: ${aiEnabled ? 'activ (Claude Opus 4.8)' : 'inactiv'}`);
   console.log(`   Acces: ${config.adminIds.length ? `restricționat (${config.adminIds.length} admin)` : 'public'}`);
-});
+}
+
+/**
+ * Pornește botul, reîncercând la eroarea 409 (Conflict) — apare temporar la
+ * repornire, când copia veche încă rulează. Reîncearcă până se eliberează.
+ */
+async function launchWithRetry(attempt = 1): Promise<void> {
+  try {
+    await bot.launch({ dropPendingUpdates: true }, onStart);
+  } catch (err: any) {
+    const code = err?.response?.error_code ?? err?.code;
+    if (code === 409 && attempt <= 12) {
+      const wait = Math.min(attempt * 3, 15);
+      console.warn(`⚠️ 409 Conflict — altă copie încă rulează. Reîncerc în ${wait}s... (${attempt}/12)`);
+      await new Promise((r) => setTimeout(r, wait * 1000));
+      return launchWithRetry(attempt + 1);
+    }
+    console.error('Pornirea a eșuat:', err);
+    process.exit(1);
+  }
+}
+
+launchWithRetry();
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

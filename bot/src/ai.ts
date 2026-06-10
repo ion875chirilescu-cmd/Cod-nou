@@ -2,11 +2,13 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config, aiEnabled } from './config.js';
 import { buildSnapshot } from './features/stats.js';
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type Agent } from './agents.js';
+import { toolDefs, runTool, toolStatus } from './tools.js';
 
 const client = aiEnabled ? new Anthropic({ apiKey: config.anthropicApiKey }) : null;
 
 const MODEL = 'claude-opus-4-8';
 const MAX_HISTORY = 12; // ultimele 6 schimburi (user+assistant)
+const MAX_TOOL_ROUNDS = 6; // câte runde de unelte într-un singur răspuns
 
 type Turn = { role: 'user' | 'assistant'; content: string };
 
@@ -36,41 +38,51 @@ export function resetHistory(chatId: number): void {
 
 /** Baza comună tuturor agenților + persona specifică + context live. */
 function systemPrompt(agent: Agent): string {
+  const today = new Date().toLocaleDateString('ro-RO', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
   return [
     `Faci parte din ECHIPA DIGITALĂ a unui antrenor și proprietar de la ${config.businessName},`,
     'o frizerie premium și o academie de frizerie din România.',
+    `Data de azi: ${today}.`,
     '',
     agent.persona,
     '',
-    'Reguli comune pentru toți agenții:',
+    'Ai UNELTE prin care poți citi și modifica datele reale ale afacerii:',
+    '- citire: get_stats, list_appointments, list_clients, list_students',
+    '- acțiuni: add_appointment, add_client, add_student',
+    'Folosește-le din proprie inițiativă când întrebarea cere date concrete sau o acțiune.',
+    'Nu inventa cifre sau nume — verifică întâi cu uneltele. La acțiuni importante,',
+    'confirmă scurt ce ai făcut după ce le execuți.',
+    '',
+    'Reguli comune:',
     '- Răspunde mereu în limba română, pe „tu", direct și prietenos.',
     '- Fii concret și acționabil — pași clari, nu generalități.',
     '- Folosește formatare Telegram (Markdown): *îngroșat*, liste cu „•", emoji cu măsură.',
-    '- Când răspunsul depinde de cifre, folosește rezumatul de business de mai jos.',
-    `- Dacă o cerere ține clar de alt coleg din echipă, spune scurt pe cine să întrebe`,
-    `  (${AGENTS.map((a) => `${a.name}`).join(', ')}).`,
+    `- Dacă o cerere ține clar de alt coleg, spune pe cine să întrebe (${AGENTS.map((a) => a.name).join(', ')}).`,
     '',
     businessContext(),
   ].join('\n');
 }
 
-/** Rezumat live al afacerii, ca agenții să răspundă pe cifre reale. */
+/** Rezumat rapid al afacerii (pentru context imediat; detaliile vin din unelte). */
 function businessContext(): string {
   const s = buildSnapshot();
   return [
-    '── Rezumat afacere (date curente) ──',
-    `Programări active: ${s.appointmentsActive} (azi: ${s.upcomingToday})`,
-    `Programări finalizate: ${s.appointmentsDone}, anulate: ${s.appointmentsCancelled}`,
-    `Încasări din programări finalizate: ${s.revenueDone} lei (azi: ${s.revenueToday} lei)`,
-    `Clienți în bază: ${s.clientsTotal}`,
-    `Cursanți activi (Academy): ${s.studentsActive}`,
-    `Academy — facturat: ${s.academyBilled} lei, încasat: ${s.academyCollected} lei, restanțe: ${s.academyOutstanding} lei`,
+    '── Rezumat rapid (cifre curente) ──',
+    `Programări active: ${s.appointmentsActive} (azi: ${s.upcomingToday}) · finalizate: ${s.appointmentsDone}`,
+    `Încasări finalizate: ${s.revenueDone} lei · Clienți: ${s.clientsTotal}`,
+    `Cursanți activi: ${s.studentsActive} · Restanțe Academy: ${s.academyOutstanding} lei`,
   ].join('\n');
 }
 
 /**
- * Trimite un mesaj către agentul curent (sau unul specificat) și transmite
- * răspunsul în bucăți prin `onUpdate`. Întoarce textul final.
+ * Trimite mesajul către agent, lăsându-l să folosească unelte (buclă agentică).
+ * `onUpdate` primește mesaje de stare (ex. „caut în programări...") cât lucrează.
+ * Întoarce textul final.
  */
 export async function ask(
   chatId: number,
@@ -79,43 +91,60 @@ export async function ask(
   agentOverride?: Agent,
 ): Promise<string> {
   if (!client) {
-    return '🤖 Asistentul AI nu este configurat. Adaugă „ANTHROPIC_API_KEY" în bot/.env ca să-l activezi.';
+    return '🤖 Asistentul AI nu este configurat. Adaugă „ANTHROPIC_API_KEY" ca să-l activezi.';
   }
 
   const agent = agentOverride ?? getSelectedAgent(chatId);
-  const history = agentOverride ? [] : (histories.get(chatId) ?? []);
-  history.push({ role: 'user', content: userMessage });
+  const history = agentOverride ? [] : histories.get(chatId) ?? [];
 
-  const stream = client.messages.stream({
-    model: MODEL,
-    max_tokens: 2000,
-    thinking: { type: 'adaptive' },
-    system: systemPrompt(agent),
-    messages: history.map((t) => ({ role: t.role, content: t.content })),
-  });
+  // Mesajele pentru API (pot crește cu blocuri tool_use / tool_result în această rundă).
+  const messages: Anthropic.MessageParam[] = [
+    ...history.map((t) => ({ role: t.role, content: t.content }) as Anthropic.MessageParam),
+    { role: 'user', content: userMessage },
+  ];
 
-  let acc = '';
-  let lastPush = 0;
-  stream.on('text', (delta) => {
-    acc += delta;
-    const now = Date.now();
-    if (onUpdate && now - lastPush > 900) {
-      lastPush = now;
-      onUpdate(acc);
-    }
-  });
+  let finalText = '';
 
-  const final = await stream.finalMessage();
-  const text = final.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('')
-    .trim();
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 2500,
+      thinking: { type: 'adaptive' },
+      system: systemPrompt(agent),
+      tools: toolDefs,
+      messages,
+    });
+
+    finalText = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('')
+      .trim();
+
+    if (response.stop_reason !== 'tool_use') break;
+
+    // Modelul vrea să folosească unelte: execută-le și trimite rezultatele înapoi.
+    const toolUses = response.content.filter(
+      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+    );
+    if (onUpdate && toolUses[0]) onUpdate(toolStatus(toolUses[0].name));
+
+    messages.push({ role: 'assistant', content: response.content });
+    messages.push({
+      role: 'user',
+      content: toolUses.map((tu) => ({
+        type: 'tool_result' as const,
+        tool_use_id: tu.id,
+        content: runTool(tu.name, (tu.input ?? {}) as Record<string, any>),
+      })),
+    });
+  }
 
   if (!agentOverride) {
-    history.push({ role: 'assistant', content: text });
+    history.push({ role: 'user', content: userMessage });
+    history.push({ role: 'assistant', content: finalText });
     histories.set(chatId, history.slice(-MAX_HISTORY));
   }
 
-  return text || acc.trim();
+  return finalText;
 }

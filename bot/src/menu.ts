@@ -72,6 +72,10 @@ export const helpText = [
   '✨ *Marketing* — postări și idei (AI)',
   '🤖 *Asistent AI* — alegi un agent și scrii liber',
   '',
+  '💡 Agenții pot *acționa*, nu doar vorbi. Scrie-le natural, de ex.:',
+  '_„adaugă o programare pentru Ion mâine la 14, tuns + barbă 90 lei"_',
+  'sau _„ce clienți n-au mai venit de mult?"_',
+  '',
   'Comenzi utile: `/start` (meniu), `/anuleaza` (oprește un pas), `/reset`',
   '(șterge conversația AI).',
 ].join('\n');

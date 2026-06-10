@@ -30,6 +30,9 @@ yarn-error.*
 .env
 .env.local
 
+# Bot — date locale generate la rulare
+bot/data/db.json
+
 # IDE
 .idea/
 .vscode/

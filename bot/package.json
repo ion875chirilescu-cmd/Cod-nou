@@ -1,0 +1,24 @@
+{
+  "name": "select-bot",
+  "version": "1.0.0",
+  "description": "Echipă digitală pe Telegram pentru SELECT BARBER & SELECT ACADEMY",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
+    "dotenv": "^16.4.5",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.6.0"
+  },
+  "private": true
+}

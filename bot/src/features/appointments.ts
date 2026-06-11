@@ -3,6 +3,15 @@ import { loadDb, updateDb, newId } from '../db.js';
 import { parseNumber, parseDate, parseTime, type FlowDef } from '../flows.js';
 import type { Appointment } from '../types.js';
 
+export function listServices(): string {
+  const db = loadDb();
+  const lines = ['✂️ *Servicii & prețuri*', ''];
+  for (const s of db.services) {
+    lines.push(`• *${s.name}* — ${s.price} lei · ${s.duration} min`);
+  }
+  return lines.join('\n');
+}
+
 export function listAppointments(): { text: string; keyboard?: ReturnType<typeof Markup.inlineKeyboard> } {
   const db = loadDb();
   const active = db.appointments

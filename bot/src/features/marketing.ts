@@ -31,7 +31,7 @@ export async function generateIdeas(ctx: Context, chatId: number, context: strin
     `Dă-mi 5 idei concrete de campanii sau promoții pentru luna aceasta, pentru frizerie ` +
     `și pentru academia de frizerie.${extra} Pentru fiecare idee: titlu, pe scurt cum funcționează ` +
     `și de ce ar aduce clienți/cursanți.`;
-  await streamReply(ctx, (onUpdate) => ask(chatId, prompt, onUpdate, getAgent('marketing')));
+  await streamReply(ctx, (onUpdate) => ask(chatId, prompt, onUpdate, getAgent('director_marketing')));
 }
 
 // ── Fluxuri pentru butoanele din mapa „Marketing" ──

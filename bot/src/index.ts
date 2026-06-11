@@ -1,26 +1,20 @@
-import { Telegraf, Markup } from 'telegraf';
+import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { config, aiEnabled } from './config.js';
-import {
-  mainMenu,
-  welcome,
-  helpText,
-  appointmentsMenu,
-  clientsMenu,
-  academyMenu,
-  marketingMenu,
-} from './menu.js';
+import { mainMenu, welcome, helpText } from './menu.js';
+import { DEPARTMENTS, deptLabel, deptSubmenu } from './departments.js';
 import {
   hasFlow,
   cancelFlow,
   startFlow,
   handleFlowInput,
 } from './flows.js';
-import { ask, selectAgent, getSelectedAgent, hasSelectedAgent, resetHistory } from './ai.js';
-import { AGENTS, getAgent } from './agents.js';
+import { ask, selectAgent, hasSelectedAgent, resetHistory } from './ai.js';
+import { getAgent } from './agents.js';
 import { streamReply } from './reply.js';
 import {
   listAppointments,
+  listServices,
   setAppointmentStatus,
   addAppointmentFlow,
 } from './features/appointments.js';
@@ -38,13 +32,6 @@ bot.use(async (ctx, next) => {
   if (userId && config.adminIds.includes(userId)) return next();
   await ctx.reply('🔒 Nu ai acces la acest bot.');
 });
-
-// ── Tastatura agenților AI ──
-function agentsKeyboard() {
-  return Markup.inlineKeyboard(
-    AGENTS.map((a) => [Markup.button.callback(`${a.emoji} ${a.name} — ${a.tagline}`, `agent:${a.id}`)]),
-  );
-}
 
 // ── Start & ajutor ──
 bot.start(async (ctx) => {
@@ -78,10 +65,6 @@ async function showAppointments(ctx: any) {
 bot.command('programari', showAppointments);
 bot.command('adauga_programare', (ctx) => startFlow(ctx, ctx.chat.id, addAppointmentFlow));
 
-// Mapa „Programări"
-bot.hears('📅 Programări', (ctx) =>
-  ctx.reply(appointmentsMenu.text, { parse_mode: 'Markdown', ...appointmentsMenu.keyboard }),
-);
 bot.action('apt_add', async (ctx) => {
   await ctx.answerCbQuery();
   if (ctx.chat) await startFlow(ctx, ctx.chat.id, addAppointmentFlow);
@@ -106,10 +89,6 @@ bot.action(/^apt_cancel:(.+)$/, async (ctx) => {
 bot.command('clienti', (ctx) => ctx.reply(listClients(), { parse_mode: 'Markdown' }));
 bot.command('adauga_client', (ctx) => startFlow(ctx, ctx.chat.id, addClientFlow));
 
-// Mapa „Clienți"
-bot.hears('👥 Clienți', (ctx) =>
-  ctx.reply(clientsMenu.text, { parse_mode: 'Markdown', ...clientsMenu.keyboard }),
-);
 bot.action('cli_add', async (ctx) => {
   await ctx.answerCbQuery();
   if (ctx.chat) await startFlow(ctx, ctx.chat.id, addClientFlow);
@@ -124,10 +103,6 @@ bot.command('cursanti', (ctx) => ctx.reply(listStudents(), { parse_mode: 'Markdo
 bot.command('cursuri', (ctx) => ctx.reply(listCourses(), { parse_mode: 'Markdown' }));
 bot.command('adauga_cursant', (ctx) => startFlow(ctx, ctx.chat.id, addStudentFlow));
 
-// Mapa „Academy"
-bot.hears('🎓 Academy', (ctx) =>
-  ctx.reply(academyMenu.text, { parse_mode: 'Markdown', ...academyMenu.keyboard }),
-);
 bot.action('aca_add', async (ctx) => {
   await ctx.answerCbQuery();
   if (ctx.chat) await startFlow(ctx, ctx.chat.id, addStudentFlow);
@@ -141,18 +116,22 @@ bot.action('aca_courses', async (ctx) => {
   await ctx.reply(listCourses(), { parse_mode: 'Markdown' });
 });
 
-// ── Statistici ──
+// ── Statistici / Finanțe ──
 bot.command('statistici', (ctx) => ctx.reply(formatStats(), { parse_mode: 'Markdown' }));
-bot.hears('📊 Statistici', (ctx) => ctx.reply(formatStats(), { parse_mode: 'Markdown' }));
+bot.action('stats', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(formatStats(), { parse_mode: 'Markdown' });
+});
+
+// ── Servicii ──
+bot.action('services', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(listServices(), { parse_mode: 'Markdown' });
+});
 
 // ── Marketing (AI) ──
 bot.command('postare', (ctx) => generatePost(ctx, ctx.chat.id, ctx.payload ?? ''));
 bot.command('idei', (ctx) => generateIdeas(ctx, ctx.chat.id, ctx.payload ?? ''));
-
-// Mapa „Marketing"
-bot.hears('✨ Marketing', (ctx) =>
-  ctx.reply(marketingMenu.text, { parse_mode: 'Markdown', ...marketingMenu.keyboard }),
-);
 bot.action('mkt_post', async (ctx) => {
   await ctx.answerCbQuery();
   if (ctx.chat) await startFlow(ctx, ctx.chat.id, postFlow);
@@ -162,44 +141,44 @@ bot.action('mkt_ideas', async (ctx) => {
   if (ctx.chat) await startFlow(ctx, ctx.chat.id, ideasFlow);
 });
 
-// ── Vânzări Masterclass (pentru grup) ──
-// Generează misiunea de azi pentru echipă — gata de postat în grup.
-bot.command('misiune', async (ctx) => {
+// ── Misiune vânzări Masterclass ──
+async function sendMission(ctx: any, ctxText: string) {
   if (!aiEnabled) {
     await ctx.reply('🤖 Adaugă „ANTHROPIC_API_KEY" ca să folosești agentul de vânzări.');
     return;
   }
-  const ctxText = ctx.payload?.trim();
   const prompt =
     'Dă echipei din grup MISIUNEA DE AZI ca să vândă cât mai multe bilete la Masterclass.' +
     (ctxText ? ` Context: ${ctxText}.` : '') +
     ' Include: 🎯 un obiectiv clar, ✅ 3-5 sarcini concrete pe care fiecare membru să le facă azi,' +
     ' 💬 1-2 mesaje gata de trimis (DM/story) și 🔥 o încurajare scurtă. Scrie ca să fie postat direct în grup.';
   await streamReply(ctx, (onUpdate) => ask(ctx.chat.id, prompt, onUpdate, getAgent('masterclass')));
+}
+bot.command('misiune', (ctx) => sendMission(ctx, ctx.payload?.trim() ?? ''));
+bot.action('misiune', async (ctx) => {
+  await ctx.answerCbQuery();
+  await sendMission(ctx, '');
 });
 
-// ── Agenți AI ──
-bot.hears('🤖 Asistent AI', async (ctx) => {
-  const current = getSelectedAgent(ctx.chat.id);
-  const status = aiEnabled
-    ? `Agent activ: *${current.emoji} ${current.name}*. Scrie-mi liber sau alege alt agent:`
-    : '🤖 AI inactiv — adaugă „ANTHROPIC_API_KEY" în bot/.env. Comenzile și meniurile merg normal.';
-  await ctx.reply(`🤖 *Echipa de agenți AI*\n\n${status}`, {
-    parse_mode: 'Markdown',
-    ...agentsKeyboard(),
-  });
-});
-
-bot.action(/^agent:(.+)$/, async (ctx) => {
+// ── Selectarea unui director AI (din mapa departamentului) ──
+bot.action(/^dir:(.+)$/, async (ctx) => {
   const chatId = ctx.chat?.id;
   if (chatId === undefined) return ctx.answerCbQuery();
   const agent = selectAgent(chatId, ctx.match[1]);
   await ctx.answerCbQuery(`${agent.emoji} ${agent.name}`);
-  await ctx.editMessageText(
-    `${agent.emoji} *${agent.name}* este acum activ.\n_${agent.tagline}_\n\nScrie-mi ce ai nevoie.`,
-    { parse_mode: 'Markdown' },
-  );
+  const note = aiEnabled
+    ? `${agent.emoji} *${agent.name}* este acum activ.\n_${agent.tagline}_\n\nScrie-mi ce ai nevoie — pot și *acționa* pe date.`
+    : `${agent.emoji} *${agent.name}* selectat, dar AI-ul e inactiv (lipsește cheia Claude).`;
+  await ctx.reply(note, { parse_mode: 'Markdown' });
 });
+
+// ── Mapele departamentelor (meniul principal) ──
+for (const dept of DEPARTMENTS) {
+  bot.hears(deptLabel(dept), (ctx) => {
+    const menu = deptSubmenu(dept);
+    return ctx.reply(menu.text, { parse_mode: 'Markdown', ...menu.keyboard });
+  });
+}
 
 // ── Mesaje text libere: flux activ → AI ──
 bot.on(message('text'), async (ctx) => {

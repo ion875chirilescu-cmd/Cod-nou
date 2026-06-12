@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <!-- warm background -->
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="62%">
+      <stop offset="0%" stop-color="#3a2a14"/>
+      <stop offset="45%" stop-color="#1c130b"/>
+      <stop offset="100%" stop-color="#0a0705"/>
+    </radialGradient>
+    <!-- gold gradients -->
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fdeec0"/>
+      <stop offset="35%" stop-color="#e8c074"/>
+      <stop offset="70%" stop-color="#bd8a34"/>
+      <stop offset="100%" stop-color="#8a5e1f"/>
+    </linearGradient>
+    <linearGradient id="goldBright" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff4cf"/>
+      <stop offset="100%" stop-color="#e0ab51"/>
+    </linearGradient>
+    <linearGradient id="goldBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#b8862f"/>
+      <stop offset="50%" stop-color="#f3d488"/>
+      <stop offset="100%" stop-color="#b8862f"/>
+    </linearGradient>
+    <!-- JRL black machine body -->
+    <linearGradient id="jrlBody" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#000000"/>
+      <stop offset="18%" stop-color="#2c2823"/>
+      <stop offset="42%" stop-color="#5e574c"/>
+      <stop offset="58%" stop-color="#3a352d"/>
+      <stop offset="80%" stop-color="#151210"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <linearGradient id="jrlBase" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0a0806"/>
+      <stop offset="35%" stop-color="#46403a"/>
+      <stop offset="55%" stop-color="#2c2823"/>
+      <stop offset="100%" stop-color="#070605"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5a5650"/>
+      <stop offset="50%" stop-color="#ece8e0"/>
+      <stop offset="100%" stop-color="#5a5650"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="45" result="b"/>
+      <feMerge><feMergeNode in="b"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="url(#bgGlow)"/>
+  <g opacity="0.08" stroke="#e8c074" stroke-width="3">
+    <line x1="-100" y1="500" x2="600" y2="-100"/>
+    <line x1="200" y1="700" x2="1000" y2="-150"/>
+    <line x1="500" y1="2000" x2="1200" y2="1100"/>
+    <line x1="120" y1="2000" x2="820" y2="1100"/>
+  </g>
+  <ellipse cx="600" cy="1040" rx="340" ry="420" fill="#c8923a" opacity="0.20" filter="url(#softGlow)"/>
+  <!-- vignette -->
+  <rect width="1080" height="1920" fill="url(#bgGlow)" opacity="0"/>
+
+  <!-- ===== TITLE ===== -->
+  <text x="540" y="150" text-anchor="middle" fill="url(#gold)" font-size="96" font-weight="800" letter-spacing="6" stroke="#7a531c" stroke-width="1">MASTERCLASS</text>
+  <line x1="190" y1="180" x2="890" y2="180" stroke="url(#goldBar)" stroke-width="2"/>
+
+  <!-- instructor + date row -->
+  <g transform="translate(70,235)">
+    <text x="0" y="0" fill="#f5ecd8" font-size="34" font-weight="800">Kanstantsin Maksimchyk</text>
+    <text x="2" y="34" fill="#c8923a" font-size="22" font-weight="600">@kostya.maksimchik</text>
+  </g>
+  <g transform="translate(1010,235)">
+    <text x="0" y="0" text-anchor="end" fill="url(#goldBright)" font-size="40" font-weight="900">21 IUNIE</text>
+    <text x="0" y="34" text-anchor="end" fill="#f5ecd8" font-size="24" font-weight="600" letter-spacing="3">CHIȘINĂU</text>
+  </g>
+
+  <!-- ===== CONCURS BANNER ===== -->
+  <g transform="translate(310,320)">
+    <rect x="0" y="0" width="460" height="74" rx="6" fill="url(#goldBar)"/>
+    <text x="230" y="52" text-anchor="middle" fill="#1a120a" font-size="46" font-weight="900" letter-spacing="6">CONCURS</text>
+  </g>
+  <text x="540" y="438" text-anchor="middle" fill="#cdb98f" font-size="26" font-weight="600" letter-spacing="2">pentru toți participanții la Masterclass</text>
+
+  <!-- ===== HEADLINE ===== -->
+  <g transform="translate(540,500)">
+    <text x="0" y="0" text-anchor="middle" fill="#f5ecd8" font-size="56" font-weight="900" font-style="italic">VINO ȘI</text>
+    <text x="0" y="118" text-anchor="middle" fill="url(#gold)" font-size="150" font-weight="900" font-style="italic" letter-spacing="-3" filter="url(#glow)">CÂȘTIGĂ</text>
+    <text x="0" y="180" text-anchor="middle" fill="#f5ecd8" font-size="50" font-weight="900" font-style="italic">PREMII JRL!</text>
+  </g>
+
+  <!-- ===== JRL CLIPPER (left-center) ===== -->
+  <g transform="translate(560,1010)">
+    <ellipse cx="0" cy="468" rx="150" ry="30" fill="#000" opacity="0.55"/>
+    <polygon points="-118,440 -130,408 -88,392 88,392 130,408 118,440 70,460 -70,460" fill="url(#jrlBase)" stroke="#000" stroke-width="2"/>
+    <polygon points="-60,392 -48,372 48,372 60,392" fill="#1a1612"/>
+    <rect x="-34" y="436" width="68" height="10" rx="3" fill="#ece8e0" opacity="0.8"/>
+    <path d="M -82 -150 Q -86 -168 -68 -168 L 68 -168 Q 86 -168 82 -150 L 70 60 Q 62 100 40 130 L 34 372 L -34 372 L -40 130 Q -62 100 -70 60 Z" fill="url(#jrlBody)" stroke="#000" stroke-width="2"/>
+    <path d="M -82 -150 Q -86 -168 -68 -168 L -60 -168 L -64 60 L -34 130 L -28 372 L -38 372 L -44 130 Q -66 100 -74 60 Z" fill="#e6b85c" opacity="0.32"/>
+    <rect x="-5" y="60" width="10" height="300" rx="5" fill="#8b8378" opacity="0.7"/>
+    <path d="M -84 -120 L -120 -100 Q -128 -96 -128 -86 L -128 -30 Q -128 -20 -118 -22 L -84 -34 Z" fill="#0d0b0a" stroke="#000" stroke-width="2"/>
+    <rect x="-78" y="-200" width="156" height="40" rx="5" fill="url(#steel)"/>
+    <rect x="-78" y="-172" width="156" height="14" fill="#8a847a"/>
+    <g stroke="#5a564f" stroke-width="2">
+      <line x1="-70" y1="-200" x2="-70" y2="-168"/><line x1="-58" y1="-200" x2="-58" y2="-168"/>
+      <line x1="-46" y1="-200" x2="-46" y2="-168"/><line x1="-34" y1="-200" x2="-34" y2="-168"/>
+      <line x1="-22" y1="-200" x2="-22" y2="-168"/><line x1="-10" y1="-200" x2="-10" y2="-168"/>
+      <line x1="2" y1="-200" x2="2" y2="-168"/><line x1="14" y1="-200" x2="14" y2="-168"/>
+      <line x1="26" y1="-200" x2="26" y2="-168"/><line x1="38" y1="-200" x2="38" y2="-168"/>
+      <line x1="50" y1="-200" x2="50" y2="-168"/><line x1="62" y1="-200" x2="62" y2="-168"/>
+    </g>
+    <text x="0" y="-70" text-anchor="middle" fill="#ffffff" font-size="40" font-weight="900" font-style="italic" letter-spacing="-2">JRL</text>
+    <text x="0" y="180" text-anchor="middle" fill="#cdb98f" font-size="13" letter-spacing="3">MINUTES</text>
+    <text x="0" y="234" text-anchor="middle" fill="#ece8e0" font-size="46" font-weight="700" font-family="monospace">88</text>
+    <text x="0" y="258" text-anchor="middle" fill="#cdb98f" font-size="13" letter-spacing="4">HOURS</text>
+  </g>
+
+  <!-- ===== JRL TRIMMER (right) ===== -->
+  <g transform="translate(830,1070)">
+    <ellipse cx="0" cy="408" rx="120" ry="26" fill="#000" opacity="0.55"/>
+    <polygon points="-96,384 -108,352 -72,336 72,336 108,352 96,384 56,402 -56,402" fill="url(#jrlBase)" stroke="#000" stroke-width="2"/>
+    <polygon points="-44,336 -34,318 34,318 44,336" fill="#1a1612"/>
+    <path d="M -56 -110 Q -60 -126 -44 -126 L 44 -126 Q 60 -126 56 -110 L 48 40 Q 42 80 30 110 L 26 318 L -26 318 L -30 110 Q -42 80 -48 40 Z" fill="url(#jrlBody)" stroke="#000" stroke-width="2"/>
+    <path d="M -56 -110 Q -60 -126 -44 -126 L -38 -126 L -42 40 L -22 110 L -18 318 L -26 318 L -30 110 Q -44 80 -50 40 Z" fill="#e6b85c" opacity="0.32"/>
+    <rect x="-4" y="40" width="8" height="260" rx="4" fill="#8b8378" opacity="0.7"/>
+    <rect x="-58" y="-30" width="14" height="60" rx="3" fill="#0d0b0a"/>
+    <rect x="-56" y="-12" width="10" height="20" rx="2" fill="#3a352d"/>
+    <rect x="-44" y="-150" width="88" height="14" rx="3" fill="#1a1612"/>
+    <rect x="-40" y="-168" width="80" height="20" rx="3" fill="#d6d1c8"/>
+    <g stroke="#5a564f" stroke-width="2">
+      <line x1="-34" y1="-168" x2="-34" y2="-150"/><line x1="-24" y1="-168" x2="-24" y2="-150"/>
+      <line x1="-14" y1="-168" x2="-14" y2="-150"/><line x1="-4" y1="-168" x2="-4" y2="-150"/>
+      <line x1="6" y1="-168" x2="6" y2="-150"/><line x1="16" y1="-168" x2="16" y2="-150"/>
+      <line x1="26" y1="-168" x2="26" y2="-150"/><line x1="36" y1="-168" x2="36" y2="-150"/>
+    </g>
+    <text x="0" y="-50" text-anchor="middle" fill="#ffffff" font-size="30" font-weight="900" font-style="italic" letter-spacing="-2">JRL</text>
+  </g>
+
+  <!-- ===== PRIZE BOX (left) ===== -->
+  <g transform="translate(60,980)">
+    <rect x="0" y="0" width="360" height="250" rx="18" fill="#160f08" stroke="url(#goldBar)" stroke-width="2"/>
+    <text x="30" y="54" fill="#cdb98f" font-size="28" font-weight="700" letter-spacing="1">MARELE PREMIU</text>
+    <text x="28" y="138" fill="url(#gold)" font-size="92" font-weight="900" font-style="italic" filter="url(#glow)">LOC 1</text>
+    <text x="30" y="184" fill="#ffffff" font-size="29" font-weight="800">MAȘINĂ DE TUNS JRL</text>
+    <text x="30" y="222" fill="#e8c074" font-size="29" font-weight="800">+ TRIMER JRL</text>
+  </g>
+
+  <!-- ===== BULLET FEATURES ===== -->
+  <g transform="translate(0,1500)">
+    <line x1="60" y1="-20" x2="1020" y2="-20" stroke="#3a2c18" stroke-width="2"/>
+    <g transform="translate(180,60)">
+      <circle cx="0" cy="0" r="40" fill="none" stroke="url(#goldBar)" stroke-width="3"/>
+      <path d="M -18 2 L -5 16 L 20 -14" fill="none" stroke="#e8c074" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="0" y="80" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="800">O NOUĂ VIZIUNE</text>
+      <text x="0" y="108" text-anchor="middle" fill="#a89472" font-size="18">ÎMPREUNĂ CREĂM</text>
+    </g>
+    <g transform="translate(540,60)">
+      <circle cx="0" cy="0" r="40" fill="none" stroke="url(#goldBar)" stroke-width="3"/>
+      <path d="M -18 2 L -5 16 L 20 -14" fill="none" stroke="#e8c074" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="0" y="80" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="800">CUNOAȘTEREA</text>
+      <text x="0" y="108" text-anchor="middle" fill="#a89472" font-size="18">STILULUI</text>
+    </g>
+    <g transform="translate(900,60)">
+      <circle cx="0" cy="0" r="40" fill="none" stroke="url(#goldBar)" stroke-width="3"/>
+      <path d="M -18 2 L -5 16 L 20 -14" fill="none" stroke="#e8c074" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="0" y="80" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="800">2 DEMO-TUNSORI</text>
+      <text x="0" y="108" text-anchor="middle" fill="#a89472" font-size="18">LIVE PE SCENĂ</text>
+    </g>
+  </g>
+
+  <!-- ===== FOOTER (academy logos) ===== -->
+  <g transform="translate(0,1730)">
+    <rect x="0" y="0" width="1080" height="190" fill="#0d0906"/>
+    <line x1="0" y1="0" x2="1080" y2="0" stroke="url(#goldBar)" stroke-width="2"/>
+    <!-- 360 Academy -->
+    <g transform="translate(150,95)">
+      <text x="0" y="0" text-anchor="middle" fill="url(#gold)" font-size="58" font-weight="900">360°</text>
+      <text x="0" y="34" text-anchor="middle" fill="#cdb98f" font-size="22" font-weight="600" letter-spacing="6">ACADEMY</text>
+    </g>
+    <!-- center instagram -->
+    <g transform="translate(540,80)">
+      <rect x="-24" y="-24" width="48" height="48" rx="14" fill="none" stroke="#e8c074" stroke-width="3"/>
+      <circle cx="0" cy="0" r="12" fill="none" stroke="#e8c074" stroke-width="3"/>
+      <circle cx="14" cy="-14" r="3.5" fill="#e8c074"/>
+      <text x="0" y="56" text-anchor="middle" fill="#f5ecd8" font-size="22" font-weight="700">@kostya.maksimchik</text>
+    </g>
+    <!-- Select Academy -->
+    <g transform="translate(910,95)">
+      <text x="0" y="0" text-anchor="middle" fill="#ffffff" font-size="50" font-weight="900" letter-spacing="2">SELECT</text>
+      <text x="0" y="34" text-anchor="middle" fill="#cdb98f" font-size="22" font-weight="600" letter-spacing="6">ACADEMY</text>
+    </g>
+  </g>
+</svg>

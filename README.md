@@ -63,4 +63,30 @@ src/
   utils/dates.ts         # Generare zile și sloturi orare
   storage.ts             # Wrapper AsyncStorage
   types.ts               # Tipuri TypeScript
+scripts/
+  orgData.js             # Datele organigramei (sursă unică)
+  organigrama.js         # Generează organigrama.svg / .png / .html
+  miroOrganigrama.js     # Creează organigrama în Miro (forme native via API)
 ```
+
+## 🗂️ Organigramă
+
+Structura organizatorică a salonului, în tema dark + auriu.
+
+```bash
+node scripts/organigrama.js      # → organigrama.svg, organigrama.png, organigrama.html
+```
+
+Rezultate: `organigrama.html` (interactiv), `organigrama.png` (imagine), `organigrama.svg` (vectorial).
+Editezi rolurile în `scripts/orgData.js` și rulezi din nou.
+
+### În Miro (forme native, editabile)
+
+```bash
+export MIRO_ACCESS_TOKEN="token-ul-tău"   # scopes: boards:read + boards:write
+# export MIRO_BOARD_ID="..."              # opțional: scrie într-un board existent
+node scripts/miroOrganigrama.js
+```
+
+Token-ul se obține din **miro.com → Settings → Apps → Create new app → get OAuth token**.
+Scriptul recreează ierarhia ca forme + conectori native pe board și afișează link-ul la final.

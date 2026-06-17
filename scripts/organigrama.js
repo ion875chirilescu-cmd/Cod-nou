@@ -7,15 +7,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// ─── Paletă (aceeași ca preview.html / src/theme) ───────────────────────────
-const C = {
-  bg: '#0F0F12', surface: '#1A1A20', surfaceAlt: '#22222A',
-  border: '#2A2A33', text: '#F5F5F5', muted: '#9A9AA5', gold: '#C9A24B',
-};
-const ACCENTS = {
-  gold: '#C9A24B', teal: '#4FB3A6', blue: '#5B8DEF',
-  green: '#4CAF50', purple: '#A678E0', coral: '#E07A5F',
-};
+// ─── Paletă + date (sursă unică în orgData.js) ──────────────────────────────
+const { C, ACCENTS, TOP, MANAGER, DEPTS } = require('./orgData');
 
 const W = 1480, H = 680;
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -62,22 +55,6 @@ function subCard(x, y, w, h, accent, title, desc) {
   text(x + 14, y + 21, title, { size: 12.5, weight: 700, fill: C.text });
   if (desc) text(x + 14, y + 38, desc, { size: 10.5, fill: C.muted });
 }
-
-// ─── Date organigramă ───────────────────────────────────────────────────────
-const DEPTS = [
-  { accent: ACCENTS.gold,   title: 'Frizeri & Stiliști',     desc: 'Tuns · barbă · ras cu brici · styling',
-    subs: [ { t: 'Frizer Senior', d: 'Servicii premium · mentorat' },
-            { t: 'Frizer Junior', d: 'Tunsori · barbă' },
-            { t: 'Ucenic',        d: 'Asistență · învățare' } ] },
-  { accent: ACCENTS.teal,   title: 'Recepție & Programări',  desc: 'Primire clienți · rezervări · agendă',
-    subs: [ { t: 'Recepționer', d: 'Întâmpinare · telefon' },
-            { t: 'Casier',      d: 'Încasări · bonuri' } ] },
-  { accent: ACCENTS.blue,   title: 'Marketing & Social',     desc: 'Promovare · campanii · conținut',
-    subs: [ { t: 'Content & Foto-Video', d: 'Postări · reels · fotografii' } ] },
-  { accent: ACCENTS.purple, title: 'Aprovizionare & Stoc',   desc: 'Produse · consumabile · furnizori', subs: [] },
-  { accent: ACCENTS.green,  title: 'Igienă & Curățenie',     desc: 'Sterilizare · norme sanitare', subs: [] },
-  { accent: ACCENTS.coral,  title: 'Contabilitate',          desc: 'Încasări · facturi · salarizare', subs: [] },
-];
 
 // ─── Layout ─────────────────────────────────────────────────────────────────
 const DW = 212, DH = 84, GAP = 18;
@@ -129,16 +106,16 @@ DEPTS.forEach((d, i) => {
 
 // top box (negru, ca în model)
 rrect(topX, topY, topW, topH, 14, '#000000', C.gold, 1.5);
-text(topCX, topY + 30, 'SELECT BARBER', { size: 19, weight: 800, fill: C.gold, anchor: 'middle', spacing: 2 });
-text(topCX, topY + 52, 'Administrator · Proprietar', { size: 12.5, fill: '#D8C892', anchor: 'middle' });
+text(topCX, topY + 30, TOP.title, { size: 19, weight: 800, fill: C.gold, anchor: 'middle', spacing: 2 });
+text(topCX, topY + 52, TOP.subtitle, { size: 12.5, fill: '#D8C892', anchor: 'middle' });
 
 // hexagon (Manager)
 const hx = topCX, hy = hexCY, r = hexR;
 const hex = [];
 for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 90); hex.push(`${(hx + r * Math.cos(a)).toFixed(1)},${(hy + r * Math.sin(a) * 0.82).toFixed(1)}`); }
 add(`<polygon points="${hex.join(' ')}" fill="${C.surfaceAlt}" stroke="${C.gold}" stroke-width="2"/>`);
-text(hx, hy - 4, 'MANAGER', { size: 13, weight: 800, fill: C.gold, anchor: 'middle' });
-text(hx, hy + 13, 'Salon', { size: 11.5, fill: C.muted, anchor: 'middle' });
+text(hx, hy - 4, MANAGER.title, { size: 13, weight: 800, fill: C.gold, anchor: 'middle' });
+text(hx, hy + 13, MANAGER.subtitle, { size: 11.5, fill: C.muted, anchor: 'middle' });
 
 // legendă jos
 const ly = H - 40;

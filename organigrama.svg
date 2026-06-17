@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="680" viewBox="0 0 1480 680">
+<rect x="0" y="0" width="1480" height="680" rx="0" ry="0" fill="#0F0F12"/>
+<text x="40" y="56" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="22" font-weight="800" fill="#C9A24B" text-anchor="start" letter-spacing="0.5">Organigrama — Select Barber</text>
+<text x="40" y="78" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="13" font-weight="400" fill="#9A9AA5" text-anchor="start">Structură organizatorică</text>
+<path d="M740 166 L740 182" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M740 278 L740 300" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M165 300 L1315 300" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M165 300 L165 332" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M395 300 L395 332" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M625 300 L625 332" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M855 300 L855 332" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M1085 300 L1085 332" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M1315 300 L1315 332" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<rect x="59" y="332" width="212" height="84" rx="12" ry="12" fill="#1A1A20" stroke="#2A2A33" stroke-width="1"/>
+<path d="M71 332 h188 a12 12 0 0 1 12 12 v6 h-212 v-6 a12 12 0 0 1 12 -12 z" fill="#C9A24B"/>
+<text x="165" y="370" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#F5F5F5" text-anchor="middle">Frizeri &amp; Stiliști</text>
+<text x="165" y="390" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">Tuns · barbă · ras cu brici ·</text>
+<text x="165" y="406" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">styling</text>
+<path d="M165 416 L165 581" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M165 461 L147 461" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<rect x="147" y="438" width="196" height="46" rx="9" ry="9" fill="#22222A" stroke="#2A2A33" stroke-width="1"/>
+<rect x="147" y="447" width="4" height="28" rx="2" fill="#C9A24B"/>
+<text x="161" y="459" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="700" fill="#F5F5F5" text-anchor="start">Frizer Senior</text>
+<text x="161" y="476" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="400" fill="#9A9AA5" text-anchor="start">Servicii premium · mentorat</text>
+<path d="M165 521 L147 521" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<rect x="147" y="498" width="196" height="46" rx="9" ry="9" fill="#22222A" stroke="#2A2A33" stroke-width="1"/>
+<rect x="147" y="507" width="4" height="28" rx="2" fill="#C9A24B"/>
+<text x="161" y="519" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="700" fill="#F5F5F5" text-anchor="start">Frizer Junior</text>
+<text x="161" y="536" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="400" fill="#9A9AA5" text-anchor="start">Tunsori · barbă</text>
+<path d="M165 581 L147 581" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<rect x="147" y="558" width="196" height="46" rx="9" ry="9" fill="#22222A" stroke="#2A2A33" stroke-width="1"/>
+<rect x="147" y="567" width="4" height="28" rx="2" fill="#C9A24B"/>
+<text x="161" y="579" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="700" fill="#F5F5F5" text-anchor="start">Ucenic</text>
+<text x="161" y="596" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="400" fill="#9A9AA5" text-anchor="start">Asistență · învățare</text>
+<rect x="289" y="332" width="212" height="84" rx="12" ry="12" fill="#1A1A20" stroke="#2A2A33" stroke-width="1"/>
+<path d="M301 332 h188 a12 12 0 0 1 12 12 v6 h-212 v-6 a12 12 0 0 1 12 -12 z" fill="#4FB3A6"/>
+<text x="395" y="370" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#F5F5F5" text-anchor="middle">Recepție &amp; Programări</text>
+<text x="395" y="390" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">Primire clienți · rezervări ·</text>
+<text x="395" y="406" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">agendă</text>
+<path d="M395 416 L395 521" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M395 461 L377 461" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<rect x="377" y="438" width="196" height="46" rx="9" ry="9" fill="#22222A" stroke="#2A2A33" stroke-width="1"/>
+<rect x="377" y="447" width="4" height="28" rx="2" fill="#4FB3A6"/>
+<text x="391" y="459" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="700" fill="#F5F5F5" text-anchor="start">Recepționer</text>
+<text x="391" y="476" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="400" fill="#9A9AA5" text-anchor="start">Întâmpinare · telefon</text>
+<path d="M395 521 L377 521" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<rect x="377" y="498" width="196" height="46" rx="9" ry="9" fill="#22222A" stroke="#2A2A33" stroke-width="1"/>
+<rect x="377" y="507" width="4" height="28" rx="2" fill="#4FB3A6"/>
+<text x="391" y="519" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="700" fill="#F5F5F5" text-anchor="start">Casier</text>
+<text x="391" y="536" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="400" fill="#9A9AA5" text-anchor="start">Încasări · bonuri</text>
+<rect x="519" y="332" width="212" height="84" rx="12" ry="12" fill="#1A1A20" stroke="#2A2A33" stroke-width="1"/>
+<path d="M531 332 h188 a12 12 0 0 1 12 12 v6 h-212 v-6 a12 12 0 0 1 12 -12 z" fill="#5B8DEF"/>
+<text x="625" y="370" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#F5F5F5" text-anchor="middle">Marketing &amp; Social</text>
+<text x="625" y="390" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">Promovare · campanii ·</text>
+<text x="625" y="406" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">conținut</text>
+<path d="M625 416 L625 461" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<path d="M625 461 L607 461" stroke="#2A2A33" stroke-width="1.5" fill="none"/>
+<rect x="607" y="438" width="196" height="46" rx="9" ry="9" fill="#22222A" stroke="#2A2A33" stroke-width="1"/>
+<rect x="607" y="447" width="4" height="28" rx="2" fill="#5B8DEF"/>
+<text x="621" y="459" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="700" fill="#F5F5F5" text-anchor="start">Content &amp; Foto-Video</text>
+<text x="621" y="476" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="10.5" font-weight="400" fill="#9A9AA5" text-anchor="start">Postări · reels · fotografii</text>
+<rect x="749" y="332" width="212" height="84" rx="12" ry="12" fill="#1A1A20" stroke="#2A2A33" stroke-width="1"/>
+<path d="M761 332 h188 a12 12 0 0 1 12 12 v6 h-212 v-6 a12 12 0 0 1 12 -12 z" fill="#A678E0"/>
+<text x="855" y="370" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#F5F5F5" text-anchor="middle">Aprovizionare &amp; Stoc</text>
+<text x="855" y="390" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">Produse · consumabile ·</text>
+<text x="855" y="406" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">furnizori</text>
+<rect x="979" y="332" width="212" height="84" rx="12" ry="12" fill="#1A1A20" stroke="#2A2A33" stroke-width="1"/>
+<path d="M991 332 h188 a12 12 0 0 1 12 12 v6 h-212 v-6 a12 12 0 0 1 12 -12 z" fill="#4CAF50"/>
+<text x="1085" y="370" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#F5F5F5" text-anchor="middle">Igienă &amp; Curățenie</text>
+<text x="1085" y="390" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">Sterilizare · norme sanitare</text>
+<rect x="1209" y="332" width="212" height="84" rx="12" ry="12" fill="#1A1A20" stroke="#2A2A33" stroke-width="1"/>
+<path d="M1221 332 h188 a12 12 0 0 1 12 12 v6 h-212 v-6 a12 12 0 0 1 12 -12 z" fill="#E07A5F"/>
+<text x="1315" y="370" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#F5F5F5" text-anchor="middle">Contabilitate</text>
+<text x="1315" y="390" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">Încasări · facturi ·</text>
+<text x="1315" y="406" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">salarizare</text>
+<rect x="560" y="96" width="360" height="70" rx="14" ry="14" fill="#000000" stroke="#C9A24B" stroke-width="1.5"/>
+<text x="740" y="126" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="19" font-weight="800" fill="#C9A24B" text-anchor="middle" letter-spacing="2">SELECT BARBER</text>
+<text x="740" y="148" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12.5" font-weight="400" fill="#D8C892" text-anchor="middle">Administrator · Proprietar</text>
+<polygon points="740.0,190.6 781.6,210.3 781.6,249.7 740.0,269.4 698.4,249.7 698.4,210.3" fill="#22222A" stroke="#C9A24B" stroke-width="2"/>
+<text x="740" y="226" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="13" font-weight="800" fill="#C9A24B" text-anchor="middle">MANAGER</text>
+<text x="740" y="243" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#9A9AA5" text-anchor="middle">Salon</text>
+<text x="40" y="640" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700" fill="#9A9AA5" text-anchor="start">Niveluri:</text>
+<rect x="120" y="629" width="14" height="14" rx="3" ry="3" fill="#000" stroke="#C9A24B" stroke-width="1"/>
+<text x="142" y="640" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#9A9AA5" text-anchor="start">Conducere</text>
+<rect x="270" y="629" width="14" height="14" rx="3" ry="3" fill="#1A1A20" stroke="#C9A24B" stroke-width="1"/>
+<text x="292" y="640" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#9A9AA5" text-anchor="start">Departamente</text>
+<rect x="420" y="629" width="14" height="14" rx="3" ry="3" fill="#22222A" stroke="#C9A24B" stroke-width="1"/>
+<text x="442" y="640" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="400" fill="#9A9AA5" text-anchor="start">Sub-roluri</text>
+</svg>

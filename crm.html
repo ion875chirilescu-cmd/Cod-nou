@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CRM Filiale & Academie</title>
+<title>CRM Select Barber</title>
 <style>
   :root{
     --bg:#0F0F12; --surface:#1A1A20; --surfaceAlt:#22222A; --primary:#C9A24B;
@@ -15,25 +15,22 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     padding-bottom:80px}
   h1,h2,h3{margin:0}
-  a{color:inherit}
   button{font-family:inherit;cursor:pointer}
 
-  /* Header */
   header{background:linear-gradient(180deg,#15151b,#0F0F12);border-bottom:1px solid var(--border);
-    padding:18px 16px 14px;position:sticky;top:0;z-index:20}
-  header .title{color:var(--primary);font-size:20px;letter-spacing:1px;font-weight:700}
-  header .sub{color:var(--muted);font-size:13px;margin-top:2px}
+    padding:16px 16px 12px;position:sticky;top:0;z-index:20}
+  header .title{color:var(--primary);font-size:19px;letter-spacing:1px;font-weight:700}
+  header .sub{color:var(--muted);font-size:12px;margin-top:2px}
+  #syncBadge{font-size:11px;margin-top:6px;font-weight:600}
 
-  /* Tabs */
-  .tabs{display:flex;gap:6px;max-width:1000px;margin:14px auto 0;padding:0 12px}
-  .tab{flex:1;text-align:center;padding:10px 6px;background:var(--surface);border:1px solid var(--border);
-    border-radius:12px;color:var(--muted);font-size:13px;font-weight:600;transition:.15s}
+  .tabs{display:flex;gap:5px;max-width:1000px;margin:12px auto 0;padding:0 10px}
+  .tab{flex:1;text-align:center;padding:9px 4px;background:var(--surface);border:1px solid var(--border);
+    border-radius:11px;color:var(--muted);font-size:12px;font-weight:600;transition:.15s}
   .tab.active{background:var(--primary);color:#1a1a1a;border-color:var(--primary)}
 
   .wrap{max-width:1000px;margin:0 auto;padding:16px 12px}
   .hidden{display:none}
 
-  /* Cards */
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
   .card h3{font-size:16px;margin-bottom:4px}
   .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -50,11 +47,10 @@
   .pill.recv{background:rgba(76,175,80,.15);color:var(--success)}
   .pill.done{background:rgba(154,154,165,.15);color:var(--muted)}
 
-  /* Forms */
   label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
   input,select,textarea{width:100%;background:var(--surfaceAlt);border:1px solid var(--border);
     border-radius:10px;color:var(--text);padding:11px 12px;font-size:15px;outline:none}
-  input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+  input:focus,select:focus{border-color:var(--primary)}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
   @media(max-width:560px){.form-grid{grid-template-columns:1fr}}
 
@@ -81,8 +77,9 @@
   .seg button.on{background:var(--primary);color:#1a1a1a;border-color:var(--primary)}
 
   .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+  .codebox{background:var(--surfaceAlt);border:1px dashed var(--primary);border-radius:10px;
+    padding:10px 12px;font-size:13px;word-break:break-all;color:var(--primary);font-weight:600}
 
-  /* Modal */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;
     padding:16px;z-index:50}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;width:100%;max-width:420px}
@@ -91,20 +88,21 @@
 </head>
 <body>
   <header>
-    <div class="title">💼 CRM Filiale &amp; Academie</div>
-    <div class="sub">Cifre, împrumuturi și datorii — totul într-un singur loc</div>
+    <div class="title">💈 CRM Select Barber</div>
+    <div class="sub">Cifre, împrumuturi și datorii — filiale &amp; academie</div>
+    <div id="syncBadge" class="muted">● Doar pe acest telefon</div>
   </header>
 
   <div class="tabs">
     <div class="tab active" data-tab="dash">📊 Tablou</div>
     <div class="tab" data-tab="figures">➕ Cifre</div>
-    <div class="tab" data-tab="loans">🤝 Împrumuturi</div>
+    <div class="tab" data-tab="loans">🤝 Împrumut</div>
+    <div class="tab" data-tab="settings">⚙️ Setări</div>
   </div>
 
   <!-- ============ TABLOU ============ -->
   <div class="wrap" id="tab-dash">
     <div class="grid" id="dashCards"></div>
-
     <div class="card">
       <h3>Rezumat general</h3>
       <div class="grid" style="margin-top:12px">
@@ -120,40 +118,24 @@
   <div class="wrap hidden" id="tab-figures">
     <div class="card">
       <h3>Adaugă o cifră</h3>
-      <p class="muted">Introdu încasările și cheltuielile pentru fiecare filială sau academie.</p>
+      <p class="muted">Introdu încasările și cheltuielile pentru fiecare unitate.</p>
       <div class="form-grid">
-        <div>
-          <label>Unitate</label>
-          <select id="fEntity"></select>
-        </div>
-        <div>
-          <label>Tip</label>
+        <div><label>Unitate</label><select id="fEntity"></select></div>
+        <div><label>Tip</label>
           <select id="fType">
             <option value="income">Încasare (+)</option>
             <option value="expense">Cheltuială (−)</option>
           </select>
         </div>
-        <div>
-          <label>Sumă (lei)</label>
-          <input id="fAmount" type="number" inputmode="decimal" placeholder="0" />
-        </div>
-        <div>
-          <label>Data</label>
-          <input id="fDate" type="date" />
-        </div>
-        <div style="grid-column:1/-1">
-          <label>Descriere (opțional)</label>
-          <input id="fNote" type="text" placeholder="ex. încasări zilnice, chirie, salarii..." />
-        </div>
+        <div><label>Sumă (lei)</label><input id="fAmount" type="number" inputmode="decimal" placeholder="0" /></div>
+        <div><label>Data</label><input id="fDate" type="date" /></div>
+        <div style="grid-column:1/-1"><label>Descriere (opțional)</label>
+          <input id="fNote" type="text" placeholder="ex. încasări zilnice, chirie, salarii..." /></div>
       </div>
       <button class="btn" id="addFigure">Salvează cifra</button>
     </div>
-
     <div class="card">
-      <div class="topbar">
-        <h3>Istoric cifre</h3>
-        <select id="filterEntity" style="width:auto"></select>
-      </div>
+      <div class="topbar"><h3>Istoric cifre</h3><select id="filterEntity" style="width:auto"></select></div>
       <div id="figuresList"></div>
     </div>
   </div>
@@ -164,30 +146,15 @@
       <h3>Împrumut nou</h3>
       <p class="muted">Cine dă banii și cine îi primește. Suma rămasă o poți returna oricând.</p>
       <div class="form-grid">
-        <div>
-          <label>De la (creditor — dă banii)</label>
-          <select id="lFrom"></select>
-        </div>
-        <div>
-          <label>Către (debitor — primește banii)</label>
-          <select id="lTo"></select>
-        </div>
-        <div>
-          <label>Sumă împrumutată (lei)</label>
-          <input id="lAmount" type="number" inputmode="decimal" placeholder="0" />
-        </div>
-        <div>
-          <label>Data</label>
-          <input id="lDate" type="date" />
-        </div>
-        <div style="grid-column:1/-1">
-          <label>Motiv (opțional)</label>
-          <input id="lNote" type="text" placeholder="ex. avans salarii, achiziție echipament..." />
-        </div>
+        <div><label>De la (dă banii)</label><select id="lFrom"></select></div>
+        <div><label>Către (primește banii)</label><select id="lTo"></select></div>
+        <div><label>Sumă împrumutată (lei)</label><input id="lAmount" type="number" inputmode="decimal" placeholder="0" /></div>
+        <div><label>Data</label><input id="lDate" type="date" /></div>
+        <div style="grid-column:1/-1"><label>Motiv (opțional)</label>
+          <input id="lNote" type="text" placeholder="ex. avans salarii, achiziție echipament..." /></div>
       </div>
       <button class="btn" id="addLoan">Înregistrează împrumutul</button>
     </div>
-
     <div class="card">
       <div class="seg">
         <button class="on" data-loanfilter="active">Active</button>
@@ -195,6 +162,44 @@
         <button data-loanfilter="all">Toate</button>
       </div>
       <div id="loansList"></div>
+    </div>
+  </div>
+
+  <!-- ============ SETĂRI ============ -->
+  <div class="wrap hidden" id="tab-settings">
+    <div class="card">
+      <h3>Numele unităților</h3>
+      <p class="muted">Scrie numele reale (ex. orașele). Se actualizează peste tot automat.</p>
+      <div id="entityEditors"></div>
+      <button class="btn ghost" id="resetNames" style="margin-top:10px">Revino la nume implicite</button>
+    </div>
+
+    <div class="card">
+      <h3>Sincronizare între telefoane</h3>
+      <p class="muted">Aplicația merge și fără sincronizare (datele stau pe acest telefon).
+        Pornește sincronizarea ca toate telefoanele să vadă aceleași date.</p>
+
+      <div id="syncOff">
+        <button class="btn" id="syncStart">Pornește sincronizarea</button>
+        <button class="btn ghost" id="syncConnect" style="margin-top:8px">Conectează cu un cod existent</button>
+      </div>
+
+      <div id="syncOn" class="hidden">
+        <label>Codul tău de sincronizare (dă-l celorlalte telefoane)</label>
+        <div class="codebox" id="syncCode"></div>
+        <div class="row" style="gap:8px;margin-top:10px">
+          <button class="btn sm ghost" id="syncCopy">Copiază codul</button>
+          <button class="btn sm" id="syncNow">Sincronizează acum</button>
+        </div>
+        <div class="muted" id="syncStatus" style="margin-top:10px"></div>
+        <button class="btn danger" id="syncStop" style="margin-top:12px">Oprește sincronizarea pe acest telefon</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Backup</h3>
+      <p class="muted">Salvează o copie a tuturor datelor (ca fișier), pentru siguranță.</p>
+      <button class="btn ghost" id="exportData">Descarcă backup (.json)</button>
     </div>
   </div>
 
@@ -214,26 +219,43 @@
     </div>
   </div>
 
+  <!-- Modal cod sincronizare -->
+  <div class="overlay hidden" id="connectModal">
+    <div class="modal">
+      <h3>Conectează cu cod</h3>
+      <p class="muted">Introdu codul afișat pe celălalt telefon. Datele de pe acest telefon vor fi înlocuite cu cele din cloud.</p>
+      <label>Cod de sincronizare</label>
+      <input id="connectCode" type="text" placeholder="lipește codul aici" />
+      <div class="row" style="margin-top:16px;gap:10px">
+        <button class="btn ghost" id="connectCancel" style="margin:0">Anulează</button>
+        <button class="btn" id="connectConfirm" style="margin:0">Conectează</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 /* =================== Date & stocare =================== */
-const STORE = 'crm_filiale_v1';
+const STORE = 'crm_selectbarber_v1';
 const DEFAULT_ENTITIES = ['Filiala 1', 'Filiala 2', 'Filiala 3', 'Academia'];
+const SYNC_BASE = 'https://jsonblob.com/api/jsonBlob';
 
+function blank(){ return { entities: DEFAULT_ENTITIES.slice(), figures: [], loans: [], updatedAt: Date.now() }; }
 function load(){
-  try{
-    const raw = localStorage.getItem(STORE);
-    if(raw) return JSON.parse(raw);
-  }catch(e){}
-  return { entities: DEFAULT_ENTITIES.slice(), figures: [], loans: [] };
+  try{ const raw = localStorage.getItem(STORE); if(raw){ const d=JSON.parse(raw); return Object.assign(blank(), d); } }catch(e){}
+  return blank();
 }
-function save(){ localStorage.setItem(STORE, JSON.stringify(db)); }
 let db = load();
+let syncId = localStorage.getItem(STORE+'_sync') || null;
+
+function persist(){ localStorage.setItem(STORE, JSON.stringify(db)); }
+function save(){ db.updatedAt = Date.now(); persist(); schedulePush(); }
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const today = () => new Date().toISOString().slice(0,10);
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const lei = n => (Math.round((n+Number.EPSILON)*100)/100)
   .toLocaleString('ro-RO',{minimumFractionDigits:0,maximumFractionDigits:2}) + ' lei';
 function fmtDate(d){ try{ return new Date(d).toLocaleDateString('ro-RO'); }catch(e){ return d; } }
+const $ = id => document.getElementById(id);
 
 /* =================== Calcule =================== */
 function loanRemaining(l){
@@ -243,65 +265,58 @@ function loanRemaining(l){
 function entityStats(name){
   let income=0, expense=0;
   db.figures.forEach(f=>{ if(f.entity===name){ f.type==='income'?income+=f.amount:expense+=f.amount; } });
-  let debt=0, receivable=0; // debt = de returnat (debitor); receivable = de recuperat (creditor)
-  db.loans.forEach(l=>{
-    const rem = loanRemaining(l);
-    if(rem<=0) return;
-    if(l.to===name) debt += rem;
-    if(l.from===name) receivable += rem;
-  });
+  let debt=0, receivable=0;
+  db.loans.forEach(l=>{ const rem=loanRemaining(l); if(rem<=0)return;
+    if(l.to===name) debt+=rem; if(l.from===name) receivable+=rem; });
   return { income, expense, sold: income-expense, debt, receivable };
 }
 
-/* =================== Navigare tab-uri =================== */
+/* =================== Navigare =================== */
 document.querySelectorAll('.tab').forEach(t=>{
   t.onclick = ()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
-    ['dash','figures','loans'].forEach(id=>{
-      document.getElementById('tab-'+id).classList.toggle('hidden', id!==t.dataset.tab);
+    ['dash','figures','loans','settings'].forEach(id=>{
+      $('tab-'+id).classList.toggle('hidden', id!==t.dataset.tab);
     });
     renderAll();
   };
 });
 
-/* =================== Populare selectoare =================== */
+/* =================== Selectoare =================== */
 function fillEntitySelects(){
   const opts = db.entities.map(e=>`<option value="${e}">${e}</option>`).join('');
-  fEntity.innerHTML = opts;
-  lFrom.innerHTML = opts;
-  lTo.innerHTML = opts;
+  const keepF=fEntity.value, keepLf=lFrom.value, keepLt=lTo.value, keepFilt=filterEntity.value;
+  fEntity.innerHTML = opts; lFrom.innerHTML = opts; lTo.innerHTML = opts;
   filterEntity.innerHTML = `<option value="">Toate unitățile</option>` + opts;
-  if(db.entities.length>1) lTo.selectedIndex = 1;
+  if(db.entities.includes(keepF)) fEntity.value=keepF;
+  if(db.entities.includes(keepLf)) lFrom.value=keepLf;
+  if(db.entities.includes(keepLt)) lTo.value=keepLt;
+  else if(db.entities.length>1) lTo.selectedIndex=1;
+  if(db.entities.includes(keepFilt)) filterEntity.value=keepFilt;
 }
 
 /* =================== Render Tablou =================== */
 function renderDash(){
-  const cards = db.entities.map(name=>{
+  dashCards.innerHTML = db.entities.map(name=>{
     const s = entityStats(name);
     const soldCls = s.sold>=0?'pos':'neg';
     return `<div class="card">
-      <div class="row"><h3>${name}</h3>
-        <span class="${soldCls}" style="font-weight:700">${lei(s.sold)}</span></div>
+      <div class="row"><h3>${name}</h3><span class="${soldCls}" style="font-weight:700">${lei(s.sold)}</span></div>
       <div class="muted" style="margin:2px 0 12px">Sold operațional</div>
       <div class="row"><span class="muted">Încasări</span><span class="amt pos">${lei(s.income)}</span></div>
       <div class="row" style="margin-top:6px"><span class="muted">Cheltuieli</span><span class="amt neg">${lei(s.expense)}</span></div>
       <div class="row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
         <span class="pill debt">Datorii ${lei(s.debt)}</span>
         <span class="pill recv">De recuperat ${lei(s.receivable)}</span>
-      </div>
-    </div>`;
+      </div></div>`;
   }).join('');
-  dashCards.innerHTML = cards;
-
   let inc=0,exp=0,act=0;
   db.figures.forEach(f=> f.type==='income'?inc+=f.amount:exp+=f.amount);
   db.loans.forEach(l=> act+=loanRemaining(l));
-  sumIncasari.textContent = lei(inc);
-  sumCheltuieli.textContent = lei(exp);
-  sumSold.textContent = lei(inc-exp);
-  sumSold.className = 'v ' + (inc-exp>=0?'pos':'neg');
-  sumDatorii.textContent = lei(act);
+  sumIncasari.textContent=lei(inc); sumCheltuieli.textContent=lei(exp);
+  sumSold.textContent=lei(inc-exp); sumSold.className='v '+((inc-exp)>=0?'pos':'neg');
+  sumDatorii.textContent=lei(act);
 }
 
 /* =================== Render Cifre =================== */
@@ -309,124 +324,214 @@ function renderFigures(){
   const filter = filterEntity.value;
   let list = db.figures.slice().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   if(filter) list = list.filter(f=>f.entity===filter);
-  if(list.length===0){ figuresList.innerHTML = '<div class="empty">Nicio cifră introdusă încă.</div>'; return; }
+  if(list.length===0){ figuresList.innerHTML='<div class="empty">Nicio cifră introdusă încă.</div>'; return; }
   figuresList.innerHTML = list.map(f=>{
-    const sign = f.type==='income'?'+':'−';
-    const cls = f.type==='income'?'pos':'neg';
-    return `<div class="entry">
-      <div>
-        <div style="font-weight:600">${f.entity}</div>
-        <div class="meta">${fmtDate(f.date)}${f.note?' · '+f.note:''}</div>
-      </div>
-      <div class="row" style="gap:14px">
-        <span class="amt ${cls}">${sign} ${lei(f.amount)}</span>
-        <button class="btn sm danger" onclick="delFigure('${f.id}')">✕</button>
-      </div>
-    </div>`;
+    const sign=f.type==='income'?'+':'−', cls=f.type==='income'?'pos':'neg';
+    return `<div class="entry"><div>
+      <div style="font-weight:600">${f.entity}</div>
+      <div class="meta">${fmtDate(f.date)}${f.note?' · '+f.note:''}</div></div>
+      <div class="row" style="gap:14px"><span class="amt ${cls}">${sign} ${lei(f.amount)}</span>
+      <button class="btn sm danger" onclick="delFigure('${f.id}')">✕</button></div></div>`;
   }).join('');
 }
-function delFigure(id){
-  if(!confirm('Ștergi această cifră?')) return;
-  db.figures = db.figures.filter(f=>f.id!==id); save(); renderAll();
-}
+function delFigure(id){ if(!confirm('Ștergi această cifră?'))return;
+  db.figures=db.figures.filter(f=>f.id!==id); save(); renderAll(); }
 
 /* =================== Render Împrumuturi =================== */
-let loanFilter = 'active';
+let loanFilter='active';
 document.querySelectorAll('[data-loanfilter]').forEach(b=>{
-  b.onclick = ()=>{
-    document.querySelectorAll('[data-loanfilter]').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on'); loanFilter = b.dataset.loanfilter; renderLoans();
-  };
+  b.onclick=()=>{ document.querySelectorAll('[data-loanfilter]').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); loanFilter=b.dataset.loanfilter; renderLoans(); };
 });
 function renderLoans(){
   let list = db.loans.slice().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-  if(loanFilter==='active') list = list.filter(l=>loanRemaining(l)>0);
-  if(loanFilter==='done')   list = list.filter(l=>loanRemaining(l)<=0);
-  if(list.length===0){ loansList.innerHTML = '<div class="empty">Niciun împrumut aici.</div>'; return; }
+  if(loanFilter==='active') list=list.filter(l=>loanRemaining(l)>0);
+  if(loanFilter==='done')   list=list.filter(l=>loanRemaining(l)<=0);
+  if(list.length===0){ loansList.innerHTML='<div class="empty">Niciun împrumut aici.</div>'; return; }
   loansList.innerHTML = list.map(l=>{
-    const rem = loanRemaining(l);
-    const paid = l.amount - rem;
-    const pct = l.amount>0 ? Math.min(100, paid/l.amount*100) : 0;
-    const done = rem<=0;
-    const reps = (l.repayments||[]).map(r=>`<div class="meta">↩ Returnat ${lei(r.amount)} · ${fmtDate(r.date)}</div>`).join('');
-    return `<div class="loan">
-      <div class="top">
-        <div>
-          <div style="font-weight:700">${l.from} → ${l.to}</div>
-          <div class="meta">${fmtDate(l.date)}${l.note?' · '+l.note:''}</div>
-        </div>
-        <span class="pill ${done?'done':'debt'}">${done?'Returnat integral':'Rămas '+lei(rem)}</span>
-      </div>
+    const rem=loanRemaining(l), paid=l.amount-rem, pct=l.amount>0?Math.min(100,paid/l.amount*100):0, done=rem<=0;
+    const reps=(l.repayments||[]).map(r=>`<div class="meta">↩ Returnat ${lei(r.amount)} · ${fmtDate(r.date)}</div>`).join('');
+    return `<div class="loan"><div class="top"><div>
+        <div style="font-weight:700">${l.from} → ${l.to}</div>
+        <div class="meta">${fmtDate(l.date)}${l.note?' · '+l.note:''}</div></div>
+        <span class="pill ${done?'done':'debt'}">${done?'Returnat integral':'Rămas '+lei(rem)}</span></div>
       <div class="bar"><i style="width:${pct}%"></i></div>
-      <div class="row">
-        <span class="meta">Împrumut: ${lei(l.amount)} · Returnat: ${lei(paid)}</span>
-      </div>
+      <div class="row"><span class="meta">Împrumut: ${lei(l.amount)} · Returnat: ${lei(paid)}</span></div>
       ${reps?`<div style="margin-top:8px">${reps}</div>`:''}
       <div class="row" style="margin-top:12px;gap:8px;justify-content:flex-end">
         ${done?'':`<button class="btn sm" onclick="openRepay('${l.id}')">Returnează</button>`}
-        <button class="btn sm danger" onclick="delLoan('${l.id}')">Șterge</button>
-      </div>
-    </div>`;
+        <button class="btn sm danger" onclick="delLoan('${l.id}')">Șterge</button></div></div>`;
   }).join('');
 }
-function delLoan(id){
-  if(!confirm('Ștergi acest împrumut și istoricul lui?')) return;
-  db.loans = db.loans.filter(l=>l.id!==id); save(); renderAll();
-}
+function delLoan(id){ if(!confirm('Ștergi acest împrumut și istoricul lui?'))return;
+  db.loans=db.loans.filter(l=>l.id!==id); save(); renderAll(); }
 
-/* =================== Returnare (modal) =================== */
-let repayId = null;
+/* =================== Returnare =================== */
+let repayId=null;
 function openRepay(id){
-  const l = db.loans.find(x=>x.id===id); if(!l) return;
-  repayId = id;
-  const rem = loanRemaining(l);
-  repayInfo.textContent = `${l.from} → ${l.to} · rămas de returnat ${lei(rem)}`;
-  repayAmount.value = rem;
-  repayDate.value = today();
+  const l=db.loans.find(x=>x.id===id); if(!l)return;
+  repayId=id; const rem=loanRemaining(l);
+  repayInfo.textContent=`${l.from} → ${l.to} · rămas de returnat ${lei(rem)}`;
+  repayAmount.value=rem; repayDate.value=today();
   repayModal.classList.remove('hidden');
 }
-repayCancel.onclick = ()=>{ repayModal.classList.add('hidden'); repayId=null; };
-repayConfirm.onclick = ()=>{
-  const l = db.loans.find(x=>x.id===repayId); if(!l) return;
-  const amt = parseFloat(repayAmount.value);
-  const rem = loanRemaining(l);
+repayCancel.onclick=()=>{ repayModal.classList.add('hidden'); repayId=null; };
+repayConfirm.onclick=()=>{
+  const l=db.loans.find(x=>x.id===repayId); if(!l)return;
+  const amt=parseFloat(repayAmount.value), rem=loanRemaining(l);
   if(!(amt>0)){ alert('Introdu o sumă validă.'); return; }
-  if(amt > rem + 0.001){ alert('Suma depășește restul de returnat ('+lei(rem)+').'); return; }
-  l.repayments = l.repayments || [];
-  l.repayments.push({ amount: amt, date: repayDate.value || today() });
+  if(amt>rem+0.001){ alert('Suma depășește restul de returnat ('+lei(rem)+').'); return; }
+  l.repayments=l.repayments||[]; l.repayments.push({amount:amt, date:repayDate.value||today()});
   save(); repayModal.classList.add('hidden'); repayId=null; renderAll();
 };
 
 /* =================== Adăugare =================== */
-addFigure.onclick = ()=>{
-  const amount = parseFloat(fAmount.value);
+addFigure.onclick=()=>{
+  const amount=parseFloat(fAmount.value);
   if(!(amount>0)){ alert('Introdu o sumă validă.'); return; }
-  db.figures.push({
-    id: uid(), entity: fEntity.value, type: fType.value,
-    amount, date: fDate.value || today(), note: fNote.value.trim()
-  });
-  save(); fAmount.value=''; fNote.value=''; renderAll();
-  alert('Cifră salvată ✔');
+  db.figures.push({ id:uid(), entity:fEntity.value, type:fType.value,
+    amount, date:fDate.value||today(), note:fNote.value.trim() });
+  save(); fAmount.value=''; fNote.value=''; fDate.value=today(); renderAll(); alert('Cifră salvată ✔');
 };
-addLoan.onclick = ()=>{
-  const amount = parseFloat(lAmount.value);
-  if(lFrom.value===lTo.value){ alert('Creditorul și debitorul trebuie să fie diferiți.'); return; }
+addLoan.onclick=()=>{
+  const amount=parseFloat(lAmount.value);
+  if(lFrom.value===lTo.value){ alert('Cele două unități trebuie să fie diferite.'); return; }
   if(!(amount>0)){ alert('Introdu o sumă validă.'); return; }
-  db.loans.push({
-    id: uid(), from: lFrom.value, to: lTo.value, amount,
-    date: lDate.value || today(), note: lNote.value.trim(), repayments: []
-  });
-  save(); lAmount.value=''; lNote.value=''; renderAll();
-  alert('Împrumut înregistrat ✔');
+  db.loans.push({ id:uid(), from:lFrom.value, to:lTo.value, amount,
+    date:lDate.value||today(), note:lNote.value.trim(), repayments:[] });
+  save(); lAmount.value=''; lNote.value=''; lDate.value=today(); renderAll(); alert('Împrumut înregistrat ✔');
+};
+
+/* =================== Setări: nume unități =================== */
+function renderEntityEditors(){
+  entityEditors.innerHTML = db.entities.map((name,i)=>`
+    <div class="row" style="gap:8px;margin-top:8px">
+      <input type="text" value="${name.replace(/"/g,'&quot;')}" data-idx="${i}" class="entName" />
+      <button class="btn sm" onclick="saveName(${i})">Salvează</button>
+    </div>`).join('');
+}
+function saveName(i){
+  const inp = document.querySelector('.entName[data-idx="'+i+'"]');
+  const newName = inp.value.trim(), oldName = db.entities[i];
+  if(!newName){ alert('Numele nu poate fi gol.'); inp.value=oldName; return; }
+  if(newName===oldName) return;
+  if(db.entities.includes(newName)){ alert('Există deja o unitate cu acest nume.'); inp.value=oldName; return; }
+  db.entities[i]=newName;
+  db.figures.forEach(f=>{ if(f.entity===oldName) f.entity=newName; });
+  db.loans.forEach(l=>{ if(l.from===oldName) l.from=newName; if(l.to===oldName) l.to=newName; });
+  save(); fillEntitySelects(); renderAll(); alert('Nume actualizat ✔');
+}
+resetNames.onclick=()=>{
+  if(!confirm('Revii la „Filiala 1/2/3" și „Academia"? Datele rămân, doar numele se schimbă.')) return;
+  const old=db.entities.slice();
+  db.entities = DEFAULT_ENTITIES.slice();
+  old.forEach((o,i)=>{ const n=db.entities[i]; if(!n||o===n)return;
+    db.figures.forEach(f=>{ if(f.entity===o)f.entity=n; });
+    db.loans.forEach(l=>{ if(l.from===o)l.from=n; if(l.to===o)l.to=n; }); });
+  save(); fillEntitySelects(); renderAll();
+};
+
+/* =================== Backup =================== */
+exportData.onclick=()=>{
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='crm-select-barber-'+today()+'.json'; a.click();
+};
+
+/* =================== Sincronizare (cloud opțional) =================== */
+let pushTimer=null;
+function setSyncBadge(){
+  if(syncId){ syncBadge.textContent='☁ Sincronizat'; syncBadge.style.color='var(--success)'; }
+  else { syncBadge.textContent='● Doar pe acest telefon'; syncBadge.style.color='var(--muted)'; }
+}
+function renderSyncUI(){
+  syncOff.classList.toggle('hidden', !!syncId);
+  syncOn.classList.toggle('hidden', !syncId);
+  if(syncId) syncCode.textContent = syncId;
+  setSyncBadge();
+}
+function setStatus(msg, ok){ if(syncStatus){ syncStatus.textContent=msg; syncStatus.style.color= ok===false?'var(--danger)': ok? 'var(--success)':'var(--muted)'; } }
+
+async function pushNow(){
+  if(!syncId) return;
+  try{
+    setStatus('Se trimite...', null);
+    const r = await fetch(SYNC_BASE+'/'+syncId, { method:'PUT',
+      headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(db) });
+    if(!r.ok) throw new Error(r.status);
+    setStatus('Sincronizat ✓ '+new Date().toLocaleTimeString('ro-RO'), true);
+  }catch(e){ setStatus('Nu s-a putut trimite (verifică internetul). Datele sunt salvate pe telefon.', false); }
+}
+function schedulePush(){ if(!syncId) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushNow, 1200); }
+
+async function pullNow(silent){
+  if(!syncId) return;
+  try{
+    if(!silent) setStatus('Se aduc datele...', null);
+    const r = await fetch(SYNC_BASE+'/'+syncId, { headers:{'Accept':'application/json'} });
+    if(!r.ok) throw new Error(r.status);
+    const remote = await r.json();
+    if(remote && typeof remote==='object' && remote.entities){
+      if((remote.updatedAt||0) >= (db.updatedAt||0)){
+        db = Object.assign(blank(), remote); persist();
+        fillEntitySelects(); renderAll(); renderEntityEditors();
+      }
+    }
+    if(!silent) setStatus('Sincronizat ✓ '+new Date().toLocaleTimeString('ro-RO'), true);
+  }catch(e){ if(!silent) setStatus('Nu s-a putut aduce (verifică internetul).', false); }
+}
+
+syncStart.onclick=async()=>{
+  if(!confirm('Pornești sincronizarea în cloud? Vei primi un cod de dat celorlalte telefoane.')) return;
+  try{
+    syncStart.disabled=true; syncStart.textContent='Se creează...';
+    const r = await fetch(SYNC_BASE, { method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(db) });
+    if(!r.ok) throw new Error(r.status);
+    const loc = r.headers.get('Location') || '';
+    const id = loc.split('/').pop();
+    if(!id) throw new Error('fără cod');
+    syncId = id; localStorage.setItem(STORE+'_sync', id);
+    renderSyncUI(); setStatus('Sincronizat ✓', true);
+    alert('Sincronizare pornită! Codul tău:\n\n'+id+'\n\nIntrodu-l pe celelalte telefoane la „Conectează cu un cod existent".');
+  }catch(e){ alert('Nu s-a putut porni sincronizarea. Verifică internetul și încearcă din nou.'); }
+  finally{ syncStart.disabled=false; syncStart.textContent='Pornește sincronizarea'; }
+};
+syncConnect.onclick=()=>{ connectCode.value=''; connectModal.classList.remove('hidden'); };
+connectCancel.onclick=()=>connectModal.classList.add('hidden');
+connectConfirm.onclick=async()=>{
+  const id=connectCode.value.trim(); if(!id){ alert('Introdu codul.'); return; }
+  try{
+    const r=await fetch(SYNC_BASE+'/'+id, { headers:{'Accept':'application/json'} });
+    if(!r.ok) throw new Error(r.status);
+    const remote=await r.json();
+    if(!remote || !remote.entities) throw new Error('cod invalid');
+    db=Object.assign(blank(), remote); persist();
+    syncId=id; localStorage.setItem(STORE+'_sync', id);
+    connectModal.classList.add('hidden');
+    fillEntitySelects(); renderAll(); renderEntityEditors(); renderSyncUI();
+    alert('Conectat! Acest telefon vede acum aceleași date.');
+  }catch(e){ alert('Cod invalid sau fără internet. Verifică și încearcă din nou.'); }
+};
+syncStop.onclick=()=>{
+  if(!confirm('Oprești sincronizarea pe acest telefon? Datele rămân salvate local.')) return;
+  syncId=null; localStorage.removeItem(STORE+'_sync'); renderSyncUI();
+};
+syncNow.onclick=async()=>{ await pullNow(false); await pushNow(); };
+syncCopy.onclick=async()=>{
+  try{ await navigator.clipboard.writeText(syncId); syncCopy.textContent='Copiat ✓';
+    setTimeout(()=>syncCopy.textContent='Copiază codul',1500); }
+  catch(e){ alert('Copiază manual codul:\n\n'+syncId); }
 };
 
 /* =================== Init =================== */
-filterEntity.onchange = renderFigures;
-function renderAll(){ renderDash(); renderFigures(); renderLoans(); }
+filterEntity.onchange=renderFigures;
+function renderAll(){ renderDash(); renderFigures(); renderLoans(); renderEntityEditors(); }
 function init(){
   fillEntitySelects();
-  fDate.value = today(); lDate.value = today();
-  renderAll();
+  fDate.value=today(); lDate.value=today();
+  renderAll(); renderSyncUI();
+  if(syncId) pullNow(true);
 }
 init();
 </script>

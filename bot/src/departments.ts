@@ -1,4 +1,5 @@
 import { Markup } from 'telegraf';
+import { getChannel } from './channels.js';
 
 /** Un buton dintr-o mapă de departament. `cb` = callback_data tratat în index.ts. */
 export interface DeptButton {
@@ -8,14 +9,15 @@ export interface DeptButton {
 
 export interface Dept {
   id: string;
-  num: number; // numărul diviziei din organigramă
+  num: number; // numărul funcției/diviziei din organigramă
   emoji: string;
   name: string;
   tagline: string;
+  agentId: string; // directorul AI al departamentului
   buttons: DeptButton[];
 }
 
-/** Cele 7 departamente ale afacerii (organigrama clasică). */
+/** Cele 7 departamente (funcțiile afacerii). Funcțiile 1-6 pot avea canal propriu. */
 export const DEPARTMENTS: Dept[] = [
   {
     id: 'conducere',
@@ -23,8 +25,9 @@ export const DEPARTMENTS: Dept[] = [
     emoji: '👑',
     name: 'Conducere',
     tagline: 'Strategie, decizii, coordonare',
+    agentId: 'director_general',
     buttons: [
-      { label: '💬 Vorbește cu Directorul General', cb: 'dir:director_general' },
+      { label: '💬 Director General', cb: 'dir:director_general' },
       { label: '📊 Statistici generale', cb: 'stats' },
     ],
   },
@@ -32,10 +35,11 @@ export const DEPARTMENTS: Dept[] = [
     id: 'dezvorg',
     num: 1,
     emoji: '🧩',
-    name: 'Dezvoltare Organizațională',
-    tagline: 'Echipă, training, Academy',
+    name: 'Construcție & Structurare',
+    tagline: 'Angajare, training, productivitate',
+    agentId: 'director_dezvorg',
     buttons: [
-      { label: '💬 Director Dezvoltare', cb: 'dir:director_dezvorg' },
+      { label: '💬 Director Construcție & Structurare', cb: 'dir:director_dezvorg' },
       { label: '🎓 Cursanți', cb: 'aca_students' },
       { label: '📚 Cursuri', cb: 'aca_courses' },
       { label: '➕ Înscrie cursant', cb: 'aca_add' },
@@ -46,9 +50,10 @@ export const DEPARTMENTS: Dept[] = [
     num: 2,
     emoji: '📣',
     name: 'Marketing și Vânzări',
-    tagline: 'Promovare, campanii, vânzări',
+    tagline: 'Atragere + conversie în clienți',
+    agentId: 'director_marketing',
     buttons: [
-      { label: '💬 Director Marketing', cb: 'dir:director_marketing' },
+      { label: '💬 Director Marketing & Vânzări', cb: 'dir:director_marketing' },
       { label: '📣 Generează o postare', cb: 'mkt_post' },
       { label: '💡 Idei de campanii', cb: 'mkt_ideas' },
       { label: '🎟️ Misiune Masterclass', cb: 'misiune' },
@@ -60,7 +65,8 @@ export const DEPARTMENTS: Dept[] = [
     num: 3,
     emoji: '💰',
     name: 'Finanțe',
-    tagline: 'Încasări, costuri, restanțe',
+    tagline: 'Gestionare + planificare bani',
+    agentId: 'director_financiar',
     buttons: [
       { label: '💬 Director Financiar', cb: 'dir:director_financiar' },
       { label: '📊 Raport financiar', cb: 'stats' },
@@ -70,8 +76,9 @@ export const DEPARTMENTS: Dept[] = [
     id: 'productie',
     num: 4,
     emoji: '✂️',
-    name: 'Producție & Servicii',
-    tagline: 'Programări, servicii, livrare',
+    name: 'Producție / Serviciul',
+    tagline: 'Calitate + Termen + Cost',
+    agentId: 'director_operational',
     buttons: [
       { label: '💬 Director Operațional', cb: 'dir:director_operational' },
       { label: '📅 Programări active', cb: 'apt_list' },
@@ -84,18 +91,32 @@ export const DEPARTMENTS: Dept[] = [
     num: 5,
     emoji: '⭐',
     name: 'Calitate',
-    tagline: 'Standarde, recenzii, satisfacție',
+    tagline: 'Zero erori repetate, satisfacție',
+    agentId: 'director_calitate',
     buttons: [{ label: '💬 Director Calitate', cb: 'dir:director_calitate' }],
   },
   {
     id: 'pr',
     num: 6,
     emoji: '📢',
-    name: 'PR',
-    tagline: 'Imagine, parteneriate, comunitate',
+    name: 'PR & Imagine',
+    tagline: 'Imaginea brandului, comunitate',
+    agentId: 'director_pr',
     buttons: [{ label: '💬 Director PR', cb: 'dir:director_pr' }],
   },
 ];
+
+/** Adaugă butoanele de canal (publică / leagă) în funcție de starea canalului. */
+export function deptButtonsWithChannel(d: Dept, hasChannel: boolean): DeptButton[] {
+  const channelBtn: DeptButton = hasChannel
+    ? { label: '📢 Publică în canal', cb: `pub:${d.id}` }
+    : { label: '🔗 Conectează un canal', cb: `howlink:${d.id}` };
+  return [...d.buttons, channelBtn];
+}
+
+export function getDept(id: string): Dept | undefined {
+  return DEPARTMENTS.find((d) => d.id === id);
+}
 
 /** Eticheta unui departament pe butonul din meniul principal. */
 export function deptLabel(d: Dept): string {
@@ -106,7 +127,7 @@ export function findDeptByLabel(label: string): Dept | undefined {
   return DEPARTMENTS.find((d) => deptLabel(d) === label);
 }
 
-/** Tastatura principală: cele 7 departamente, câte 2 pe rând (PR singur la final). */
+/** Tastatura principală: cele 7 departamente, câte 2 pe rând. */
 export function mainKeyboard() {
   const labels = DEPARTMENTS.map(deptLabel);
   const rows: string[][] = [];
@@ -116,10 +137,20 @@ export function mainKeyboard() {
   return Markup.keyboard(rows).resize();
 }
 
-/** Submeniul (mapa) unui departament. */
+/** Submeniul (mapa) unui departament, cu butonul de canal potrivit. */
 export function deptSubmenu(d: Dept) {
+  const channel = getChannel(d.id);
+  const buttons = deptButtonsWithChannel(d, !!channel);
+  const channelLine = channel ? `\n📢 Canal: *${channel.title}*` : '';
   return {
-    text: `${d.emoji} *${d.name}*\n_${d.tagline}_\n\nAlege ce vrei să faci:`,
-    keyboard: Markup.inlineKeyboard(d.buttons.map((b) => [Markup.button.callback(b.label, b.cb)])),
+    text: `${d.emoji} *${d.name}*\n_${d.tagline}_${channelLine}\n\nAlege ce vrei să faci:`,
+    keyboard: Markup.inlineKeyboard(buttons.map((b) => [Markup.button.callback(b.label, b.cb)])),
   };
+}
+
+/** Tastatura pentru a alege funcția când legi un canal. */
+export function linkKeyboard() {
+  return Markup.inlineKeyboard(
+    DEPARTMENTS.map((d) => [Markup.button.callback(`${d.emoji} ${d.name}`, `link:${d.id}`)]),
+  );
 }

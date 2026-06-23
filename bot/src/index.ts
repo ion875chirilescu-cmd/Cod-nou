@@ -2,7 +2,9 @@ import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { config, aiEnabled } from './config.js';
 import { mainMenu, welcome, helpText } from './menu.js';
-import { DEPARTMENTS, deptLabel, deptSubmenu } from './departments.js';
+import { DEPARTMENTS, deptLabel, deptSubmenu, linkKeyboard, getDept } from './departments.js';
+import { linkChannel, getChannel, getAllChannels } from './channels.js';
+import { makePublishFlow } from './features/publish.js';
 import {
   hasFlow,
   cancelFlow,
@@ -27,6 +29,8 @@ const bot = new Telegraf(config.botToken);
 
 // ── Control acces (opțional) ──
 bot.use(async (ctx, next) => {
+  // Lasă mereu să treacă actualizările din canale (legare/publicare).
+  if (ctx.channelPost || ctx.myChatMember) return next();
   if (config.adminIds.length === 0) return next(); // acces public
   const userId = ctx.from?.id;
   if (userId && config.adminIds.includes(userId)) return next();
@@ -170,6 +174,86 @@ bot.action(/^dir:(.+)$/, async (ctx) => {
     ? `${agent.emoji} *${agent.name}* este acum activ.\n_${agent.tagline}_\n\nScrie-mi ce ai nevoie — pot și *acționa* pe date.`
     : `${agent.emoji} *${agent.name}* selectat, dar AI-ul e inactiv (lipsește cheia Claude).`;
   await ctx.reply(note, { parse_mode: 'Markdown' });
+});
+
+// ── Canale: legare și publicare ──
+
+// Botul a fost adăugat (sau promovat) într-un canal → propune legarea de o funcție.
+bot.on('my_chat_member', async (ctx) => {
+  const upd = ctx.myChatMember;
+  const chat = upd.chat;
+  const status = upd.new_chat_member.status;
+  if (chat.type === 'channel' && (status === 'administrator' || status === 'member')) {
+    try {
+      await ctx.telegram.sendMessage(
+        chat.id,
+        '👋 Salut! Sunt botul SELECT. Leagă acest canal de o funcție, ca directorul ei să poată publica aici:',
+        linkKeyboard(),
+      );
+    } catch {
+      /* dacă nu are drept de postare încă, owner-ul poate scrie /leaga în canal */
+    }
+  }
+});
+
+// Variantă manuală: owner-ul scrie /leaga (sau /start) în canal.
+bot.on('channel_post', async (ctx) => {
+  const post: any = ctx.channelPost;
+  const text: string = post?.text ?? '';
+  if (/^\/(leaga|start)/i.test(text.trim())) {
+    await ctx.telegram.sendMessage(ctx.chat.id, 'Leagă acest canal de o funcție:', linkKeyboard());
+  }
+});
+
+// Owner-ul alege funcția pentru canalul curent.
+bot.action(/^link:(.+)$/, async (ctx) => {
+  const chat = ctx.chat;
+  const dept = getDept(ctx.match[1]);
+  if (!chat || !dept) return ctx.answerCbQuery();
+  const title = 'title' in chat && chat.title ? chat.title : `canal ${chat.id}`;
+  linkChannel(dept.id, chat.id, title);
+  await ctx.answerCbQuery(`Legat de ${dept.name}`);
+  await ctx.editMessageText(
+    `✅ Acest canal e acum legat de *${dept.emoji} ${dept.name}*.\nDirectorul poate publica aici din meniul botului.`,
+    { parse_mode: 'Markdown' },
+  );
+});
+
+// Publică în canalul funcției (pornește fluxul care întreabă tema).
+bot.action(/^pub:(.+)$/, async (ctx) => {
+  await ctx.answerCbQuery();
+  if (ctx.chat) await startFlow(ctx, ctx.chat.id, makePublishFlow(ctx.match[1]));
+});
+
+// Explică cum se conectează un canal (când nu există încă unul legat).
+bot.action(/^howlink:(.+)$/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const dept = getDept(ctx.match[1]);
+  await ctx.reply(
+    [
+      `🔗 *Conectează un canal la „${dept?.name ?? 'funcție'}"*`,
+      '',
+      '1. În Telegram, creează un *canal nou* (New Channel) pentru această funcție.',
+      '2. Deschide canalul → *Administrators* → *Add Admin* → caută acest bot și adaugă-l',
+      '   (lasă-i dreptul de a *posta mesaje*).',
+      '3. Imediat ce e adăugat, botul îți trimite în canal butoanele de legare —',
+      '   apasă pe această funcție. Gata!',
+      '',
+      '_Dacă nu apar butoanele, scrie „/leaga" direct în canal._',
+    ].join('\n'),
+    { parse_mode: 'Markdown' },
+  );
+});
+
+// Listă canale legate.
+bot.command('canale', async (ctx) => {
+  const channels = getAllChannels();
+  const lines = ['📢 *Canale legate*', ''];
+  for (const d of DEPARTMENTS) {
+    const ch = channels[d.id];
+    lines.push(`${d.emoji} ${d.name}: ${ch ? `*${ch.title}*` : '_neconectat_'}`);
+  }
+  await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
 });
 
 // ── Mapele departamentelor (meniul principal) ──

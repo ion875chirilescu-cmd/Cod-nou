@@ -52,6 +52,12 @@ export interface Service {
   duration: number; // minute
 }
 
+/** Un canal Telegram legat de o funcție/departament. */
+export interface ChannelLink {
+  chatId: number;
+  title: string;
+}
+
 export interface Database {
   appointments: Appointment[];
   clients: Client[];
@@ -59,4 +65,6 @@ export interface Database {
   courses: Course[];
   services: Service[];
   barbers: string[];
+  /** Canalele legate, pe id de funcție (departament). */
+  channels: Record<string, ChannelLink>;
 }

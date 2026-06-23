@@ -27,6 +27,7 @@ function seed(): Database {
       { id: 's6', name: 'Styling & coafat', price: 70, duration: 35 },
     ],
     barbers: ['Andrei Popescu', 'Mihai Ionescu', 'Cristian Dumitru', 'Alexandru Radu'],
+    channels: {},
   };
 }
 
@@ -41,6 +42,8 @@ export function loadDb(): Database {
   }
   try {
     cache = JSON.parse(readFileSync(DB_PATH, 'utf-8')) as Database;
+    // Migrare ușoară: completează câmpurile noi lipsă din bazele vechi.
+    if (!cache.channels) cache.channels = {};
   } catch {
     console.warn('⚠️  db.json corupt — repornesc cu date inițiale.');
     cache = seed();

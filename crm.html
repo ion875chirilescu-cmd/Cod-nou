@@ -204,7 +204,7 @@
   </div>
 
   <!-- Modal returnare -->
-  <div class="overlay hidden" id="repayModal">
+  <div class="overlay hidden" id="repayModal" onclick="if(event.target===this)this.classList.add('hidden')">
     <div class="modal">
       <h3>Returnează împrumut</h3>
       <p class="muted" id="repayInfo"></p>
@@ -213,21 +213,21 @@
       <label>Data</label>
       <input id="repayDate" type="date" />
       <div class="row" style="margin-top:16px;gap:10px">
-        <button class="btn ghost" id="repayCancel" style="margin:0" onclick="closeModal('repayModal')">Anulează</button>
+        <button type="button" class="btn ghost" id="repayCancel" style="margin:0" onclick="this.closest('.overlay').classList.add('hidden')">Anulează</button>
         <button class="btn" id="repayConfirm" style="margin:0">Confirmă</button>
       </div>
     </div>
   </div>
 
   <!-- Modal cod sincronizare -->
-  <div class="overlay hidden" id="connectModal">
+  <div class="overlay hidden" id="connectModal" onclick="if(event.target===this)this.classList.add('hidden')">
     <div class="modal">
       <h3>Conectează cu cod</h3>
       <p class="muted">Introdu codul afișat pe celălalt telefon. Datele de pe acest telefon vor fi înlocuite cu cele din cloud.</p>
       <label>Cod de sincronizare</label>
       <input id="connectCode" type="text" placeholder="lipește codul aici" />
       <div class="row" style="margin-top:16px;gap:10px">
-        <button class="btn ghost" id="connectCancel" style="margin:0" onclick="closeModal('connectModal')">Anulează</button>
+        <button type="button" class="btn ghost" id="connectCancel" style="margin:0" onclick="this.closest('.overlay').classList.add('hidden')">Anulează</button>
         <button class="btn" id="connectConfirm" style="margin:0">Conectează</button>
       </div>
     </div>

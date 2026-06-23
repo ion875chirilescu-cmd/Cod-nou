@@ -28,6 +28,7 @@ function seed(): Database {
     ],
     barbers: ['Andrei Popescu', 'Mihai Ionescu', 'Cristian Dumitru', 'Alexandru Radu'],
     channels: {},
+    topics: {},
   };
 }
 
@@ -44,6 +45,7 @@ export function loadDb(): Database {
     cache = JSON.parse(readFileSync(DB_PATH, 'utf-8')) as Database;
     // Migrare ușoară: completează câmpurile noi lipsă din bazele vechi.
     if (!cache.channels) cache.channels = {};
+    if (!cache.topics) cache.topics = {};
   } catch {
     console.warn('⚠️  db.json corupt — repornesc cu date inițiale.');
     cache = seed();

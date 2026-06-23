@@ -58,6 +58,13 @@ export interface ChannelLink {
   title: string;
 }
 
+/** O rubrică (topic) dintr-un grup-forum, legată de o funcție. */
+export interface TopicLink {
+  chatId: number;
+  threadId: number;
+  name: string;
+}
+
 export interface Database {
   appointments: Appointment[];
   clients: Client[];
@@ -67,4 +74,6 @@ export interface Database {
   barbers: string[];
   /** Canalele legate, pe id de funcție (departament). */
   channels: Record<string, ChannelLink>;
+  /** Rubricile (topics) din grup, pe id de funcție. */
+  topics: Record<string, TopicLink>;
 }

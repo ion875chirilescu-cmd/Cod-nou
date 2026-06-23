@@ -3,7 +3,15 @@ import { message } from 'telegraf/filters';
 import { config, aiEnabled } from './config.js';
 import { mainMenu, welcome, helpText } from './menu.js';
 import { DEPARTMENTS, deptLabel, deptSubmenu, linkKeyboard, getDept } from './departments.js';
-import { linkChannel, getChannel, getAllChannels } from './channels.js';
+import {
+  linkChannel,
+  getChannel,
+  getAllChannels,
+  setTopic,
+  getTopic,
+  getTopicFunction,
+  getAllTopics,
+} from './channels.js';
 import { makePublishFlow } from './features/publish.js';
 import {
   hasFlow,
@@ -245,13 +253,78 @@ bot.action(/^howlink:(.+)$/, async (ctx) => {
   );
 });
 
-// Listă canale legate.
+// ── Rubrici (Topics) într-un grup-forum ──
+// Creează automat câte o rubrică pentru fiecare funcție, cu directorul ei.
+bot.command('rubrici', async (ctx) => {
+  const chat: any = ctx.chat;
+  if (chat.type !== 'group' && chat.type !== 'supergroup') {
+    await ctx.reply('ℹ️ Rulează /rubrici *în grupul* unde vrei rubricile.', { parse_mode: 'Markdown' });
+    return;
+  }
+  if (!chat.is_forum) {
+    await ctx.reply(
+      [
+        '⚠️ Acest grup nu are *Subiecte (Topics)* activate.',
+        '',
+        'Activează-le: deschide grupul → apasă pe nume → *Edit* (creion) →',
+        '*Topics* → pornește comutatorul → *Save*.',
+        '',
+        'Asigură-te și că botul e *administrator* (cu drept de a gestiona subiecte),',
+        'apoi rulează din nou /rubrici aici.',
+      ].join('\n'),
+      { parse_mode: 'Markdown' },
+    );
+    return;
+  }
+
+  const targets = DEPARTMENTS.filter((d) => d.num >= 1 && d.num <= 6).sort((a, b) => a.num - b.num);
+  const created: string[] = [];
+  const skipped: string[] = [];
+  const failed: string[] = [];
+
+  for (const d of targets) {
+    const existing = getTopic(d.id);
+    if (existing && existing.chatId === chat.id) {
+      skipped.push(`${d.emoji} ${d.name}`);
+      continue;
+    }
+    try {
+      const topic: any = await ctx.telegram.createForumTopic(chat.id, `${d.emoji} ${d.name}`);
+      setTopic(d.id, chat.id, topic.message_thread_id, d.name);
+      await ctx.telegram.sendMessage(
+        chat.id,
+        `${d.emoji} *${d.name}*\n_${d.tagline}_\n\nAici răspunde *${getAgent(d.agentId).name}*.\nScrieți-i cu mențiune (@bot) sau reply.`,
+        { message_thread_id: topic.message_thread_id, parse_mode: 'Markdown' },
+      );
+      created.push(`${d.emoji} ${d.name}`);
+    } catch (err: any) {
+      console.error('createForumTopic', d.id, err?.message);
+      failed.push(`${d.emoji} ${d.name}`);
+    }
+  }
+
+  const parts: string[] = [];
+  if (created.length) parts.push(`✅ Rubrici create:\n${created.join('\n')}`);
+  if (skipped.length) parts.push(`↩️ Existau deja:\n${skipped.join('\n')}`);
+  if (failed.length)
+    parts.push(
+      `⚠️ Nu am putut crea:\n${failed.join('\n')}\nVerifică dacă botul e *administrator* cu drept de *Manage Topics*.`,
+    );
+  await ctx.reply(parts.join('\n\n') || 'Nu s-a creat nimic.', { parse_mode: 'Markdown' });
+});
+
+// Listă canale și rubrici legate.
 bot.command('canale', async (ctx) => {
   const channels = getAllChannels();
-  const lines = ['📢 *Canale legate*', ''];
+  const topics = getAllTopics();
+  const lines = ['🔗 *Conexiuni pe funcții*', ''];
   for (const d of DEPARTMENTS) {
     const ch = channels[d.id];
-    lines.push(`${d.emoji} ${d.name}: ${ch ? `*${ch.title}*` : '_neconectat_'}`);
+    const tp = topics[d.id];
+    const parts: string[] = [];
+    if (ch) parts.push(`canal: *${ch.title}*`);
+    if (tp) parts.push(`rubrică: *${tp.name}*`);
+    lines.push(`${d.emoji} ${d.name}: ${parts.length ? parts.join(' · ') : '_neconectat_'}`);
   }
   await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
 });
@@ -295,12 +368,28 @@ bot.on(message('text'), async (ctx) => {
     const repliedToBot = ctx.message.reply_to_message?.from?.id === ctx.botInfo?.id;
     if (!mentioned && !repliedToBot) return; // conversație între membri — ignoră
 
-    // Implicit, în grup agentul este antrenorul de vânzări Masterclass.
-    if (!hasSelectedAgent(chatId)) selectAgent(chatId, 'masterclass');
-
     // Curăță mențiunea din text.
     if (username) prompt = text.split(`@${username}`).join('').trim();
+
+    // Dacă mesajul e într-o rubrică (topic) legată de o funcție, răspunde directorul ei,
+    // chiar în acea rubrică.
+    const threadId = (ctx.message as any).message_thread_id as number | undefined;
+    const fnId = threadId ? getTopicFunction(chatId, threadId) : undefined;
+
+    if (fnId) {
+      const dept = getDept(fnId)!;
+      if (!prompt) prompt = `Dă echipei un sfat concret și util pentru „${dept.name}".`;
+      await streamReply(ctx, (onUpdate) => ask(chatId, prompt, onUpdate, getAgent(dept.agentId)), {
+        message_thread_id: threadId,
+      });
+      return;
+    }
+
+    // Fără rubrică: antrenorul de vânzări Masterclass (cu memorie).
+    if (!hasSelectedAgent(chatId)) selectAgent(chatId, 'masterclass');
     if (!prompt) prompt = 'Dă echipei instrucțiuni concrete ca să vândă cât mai multe bilete la Masterclass azi.';
+    await streamReply(ctx, (onUpdate) => ask(chatId, prompt, onUpdate), threadId ? { message_thread_id: threadId } : {});
+    return;
   }
 
   await streamReply(ctx, (onUpdate) => ask(chatId, prompt, onUpdate));

@@ -33,5 +33,8 @@ export const helpText = [
   'sau _„ce restanțe avem la Academy?"_',
   '',
   'Comenzi utile: `/start` (meniu), `/anuleaza` (oprește un pas),',
-  '`/misiune` (sarcini de vânzări pentru echipă), `/reset` (șterge conversația AI).',
+  '`/misiune` (sarcini de vânzări), `/reset` (șterge conversația AI).',
+  '',
+  '*În grup:* `/rubrici` creează câte o rubrică (Topic) pentru fiecare funcție,',
+  'cu directorul ei. `/canale` arată canalele și rubricile conectate.',
 ].join('\n');

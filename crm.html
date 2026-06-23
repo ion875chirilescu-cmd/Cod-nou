@@ -213,7 +213,7 @@
       <label>Data</label>
       <input id="repayDate" type="date" />
       <div class="row" style="margin-top:16px;gap:10px">
-        <button class="btn ghost" id="repayCancel" style="margin:0">Anulează</button>
+        <button class="btn ghost" id="repayCancel" style="margin:0" onclick="closeModal('repayModal')">Anulează</button>
         <button class="btn" id="repayConfirm" style="margin:0">Confirmă</button>
       </div>
     </div>
@@ -227,7 +227,7 @@
       <label>Cod de sincronizare</label>
       <input id="connectCode" type="text" placeholder="lipește codul aici" />
       <div class="row" style="margin-top:16px;gap:10px">
-        <button class="btn ghost" id="connectCancel" style="margin:0">Anulează</button>
+        <button class="btn ghost" id="connectCancel" style="margin:0" onclick="closeModal('connectModal')">Anulează</button>
         <button class="btn" id="connectConfirm" style="margin:0">Conectează</button>
       </div>
     </div>
@@ -375,7 +375,9 @@ function openRepay(id){
   repayAmount.value=rem; repayDate.value=today();
   repayModal.classList.remove('hidden');
 }
-repayCancel.onclick=()=>{ repayModal.classList.add('hidden'); repayId=null; };
+function closeModal(id){ $(id).classList.add('hidden'); if(id==='repayModal') repayId=null; }
+window.closeModal = closeModal;
+repayCancel.onclick=()=>closeModal('repayModal');
 repayConfirm.onclick=()=>{
   const l=db.loans.find(x=>x.id===repayId); if(!l)return;
   const amt=parseFloat(repayAmount.value), rem=loanRemaining(l);
@@ -530,6 +532,10 @@ function renderAll(){ renderDash(); renderFigures(); renderLoans(); renderEntity
 function init(){
   fillEntitySelects();
   fDate.value=today(); lDate.value=today();
+  ['repayModal','connectModal'].forEach(id=>{
+    const ov=$(id);
+    ov.addEventListener('click', e=>{ if(e.target===ov) closeModal(id); });
+  });
   renderAll(); renderSyncUI();
   if(syncId) pullNow(true);
 }

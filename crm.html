@@ -178,6 +178,29 @@
     </div>
 
     <div class="card">
+      <h3>Cloud (Supabase)</h3>
+      <p class="muted">Conectează aplicația la baza ta de date Supabase, ca toate telefoanele
+        să vadă aceleași cifre. Cheia se salvează doar pe acest telefon.</p>
+
+      <div id="supaOff">
+        <label>Project URL</label>
+        <input id="supaUrl" type="text" placeholder="https://xxxxx.supabase.co" autocapitalize="off" autocorrect="off" />
+        <label>Cheia anon (public)</label>
+        <input id="supaKey" type="text" placeholder="eyJhbGciOi..." autocapitalize="off" autocorrect="off" />
+        <button class="btn" id="supaConnect">Conectează</button>
+      </div>
+
+      <div id="supaOn" class="hidden">
+        <div class="row"><span class="muted">Stare</span><span id="supaState" style="font-weight:800">—</span></div>
+        <div class="muted" id="supaStatus" style="margin-top:8px"></div>
+        <div class="row" style="gap:8px;margin-top:12px">
+          <button class="btn sm ghost" id="supaSyncNow">Sincronizează acum</button>
+          <button class="btn sm danger" id="supaDisconnect">Deconectează</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>Backup</h3>
       <p class="muted">Salvează o copie a tuturor datelor (ca fișier), pentru siguranță.</p>
       <button class="btn ghost" id="exportData">Descarcă backup (.json)</button>
@@ -213,7 +236,7 @@ function load(){
 let db = load();
 
 function persist(){ localStorage.setItem(STORE, JSON.stringify(db)); }
-function save(){ db.updatedAt = Date.now(); persist(); }
+function save(){ db.updatedAt = Date.now(); persist(); supaSchedulePush(); }
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -405,6 +428,92 @@ exportData.onclick=()=>{
   a.download='crm-select-barber-'+today()+'.json'; a.click();
 };
 
+/* =================== Cloud (Supabase) =================== */
+const SUPA_ROW = 'main';
+let supa = { url: localStorage.getItem(STORE+'_supaUrl') || '', key: localStorage.getItem(STORE+'_supaKey') || '' };
+let supaPushTimer = null;
+const supaOn = () => !!(supa.url && supa.key);
+
+function supaHeaders(extra){
+  return Object.assign({ apikey: supa.key, Authorization: 'Bearer '+supa.key }, extra||{});
+}
+function supaSetStatus(msg, ok){
+  const el=$('supaStatus'); if(!el) return;
+  el.textContent=msg||''; el.style.color = ok===false?'var(--danger)': ok? 'var(--success)':'var(--muted)';
+}
+function renderSupaUI(){
+  if(!$('supaOff')) return;
+  $('supaOff').classList.toggle('hidden', supaOn());
+  $('supaOn').classList.toggle('hidden', !supaOn());
+  if(supaOn() && $('supaState')){
+    $('supaState').textContent='☁ Conectat';
+    $('supaState').style.color='var(--success)';
+  }
+}
+
+async function supaLoad(){
+  const r = await fetch(supa.url.replace(/\/+$/,'')+'/rest/v1/crm_state?id=eq.'+SUPA_ROW+'&select=data',
+    { headers: supaHeaders() });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const rows = await r.json();
+  return (rows && rows[0] && rows[0].data) ? rows[0].data : null;
+}
+async function supaUpsert(){
+  const body = [{ id: SUPA_ROW, data: db, updated_at: new Date().toISOString() }];
+  const r = await fetch(supa.url.replace(/\/+$/,'')+'/rest/v1/crm_state',
+    { method:'POST', headers: supaHeaders({ 'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates,return=minimal' }), body: JSON.stringify(body) });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+}
+async function supaPush(){
+  if(!supaOn()) return;
+  try{ supaSetStatus('Se trimite...', null); await supaUpsert();
+    supaSetStatus('Sincronizat ✓ '+new Date().toLocaleTimeString('ro-RO'), true); }
+  catch(e){ supaSetStatus('Nu s-a putut trimite ('+e.message+'). Datele sunt salvate pe telefon.', false); }
+}
+function supaSchedulePush(){ if(!supaOn()) return; clearTimeout(supaPushTimer); supaPushTimer=setTimeout(supaPush, 1200); }
+
+async function supaPull(silent){
+  if(!supaOn()) return;
+  try{
+    if(!silent) supaSetStatus('Se aduc datele...', null);
+    const remote = await supaLoad();
+    if(remote && remote.entities && (remote.updatedAt||0) >= (db.updatedAt||0)){
+      db = Object.assign(blank(), remote); persist();
+      fillEntitySelects(); renderAll();
+    }
+    if(!silent) supaSetStatus('Sincronizat ✓ '+new Date().toLocaleTimeString('ro-RO'), true);
+  }catch(e){ if(!silent) supaSetStatus('Nu s-a putut aduce ('+e.message+').', false); }
+}
+
+if($('supaConnect')) $('supaConnect').onclick=async()=>{
+  const url=$('supaUrl').value.trim(), key=$('supaKey').value.trim();
+  if(!url || !key){ alert('Completează Project URL și cheia anon.'); return; }
+  supa.url=url; supa.key=key;
+  try{
+    $('supaConnect').disabled=true; $('supaConnect').textContent='Se conectează...';
+    const remote = await supaLoad();
+    localStorage.setItem(STORE+'_supaUrl', url); localStorage.setItem(STORE+'_supaKey', key);
+    if(remote && remote.entities){
+      if(confirm('Există deja date în cloud. Le aduc pe acest telefon? (Datele locale vor fi înlocuite.)')){
+        db = Object.assign(blank(), remote); persist(); fillEntitySelects(); renderAll();
+      } else { await supaUpsert(); }
+    } else { await supaUpsert(); }
+    renderSupaUI(); supaSetStatus('Conectat ✓', true);
+    alert('Conectat la Supabase! Introdu aceleași două valori pe celelalte telefoane.');
+  }catch(e){
+    supa.url=''; supa.key='';
+    alert('Conectare eșuată: '+e.message+'\n\nVerifică Project URL, cheia anon și că ai rulat scriptul SQL (tabelul crm_state).');
+  }finally{ $('supaConnect').disabled=false; $('supaConnect').textContent='Conectează'; }
+};
+if($('supaSyncNow')) $('supaSyncNow').onclick=async()=>{ await supaPull(false); await supaPush(); };
+if($('supaDisconnect')) $('supaDisconnect').onclick=()=>{
+  if(!confirm('Deconectezi acest telefon de la cloud? Datele rămân salvate local.')) return;
+  supa.url=''; supa.key='';
+  localStorage.removeItem(STORE+'_supaUrl'); localStorage.removeItem(STORE+'_supaKey');
+  renderSupaUI();
+};
+
 /* =================== Init =================== */
 filterEntity.onchange=renderFigures;
 function renderAll(){ renderDash(); renderFigures(); renderLoans(); renderEntityEditors(); }
@@ -414,6 +523,8 @@ function init(){
   const ov=$('repayModal');
   ov.addEventListener('click', e=>{ if(e.target===ov) closeModal('repayModal'); });
   renderAll();
+  renderSupaUI();
+  if(supaOn()) supaPull(true);
 }
 init();
 </script>

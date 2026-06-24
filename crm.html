@@ -90,7 +90,6 @@
   <header>
     <div class="title">💈 CRM Select Barber</div>
     <div class="sub">Cifre, împrumuturi și datorii — filiale &amp; academie</div>
-    <div id="syncBadge" class="muted">● Doar pe acest telefon</div>
   </header>
 
   <div class="tabs">
@@ -175,28 +174,6 @@
     </div>
 
     <div class="card">
-      <h3>Sincronizare între telefoane</h3>
-      <p class="muted">Aplicația merge și fără sincronizare (datele stau pe acest telefon).
-        Pornește sincronizarea ca toate telefoanele să vadă aceleași date.</p>
-
-      <div id="syncOff">
-        <button class="btn" id="syncStart">Pornește sincronizarea</button>
-        <button class="btn ghost" id="syncConnect" style="margin-top:8px">Conectează cu un cod existent</button>
-      </div>
-
-      <div id="syncOn" class="hidden">
-        <label>Codul tău de sincronizare (dă-l celorlalte telefoane)</label>
-        <div class="codebox" id="syncCode"></div>
-        <div class="row" style="gap:8px;margin-top:10px">
-          <button class="btn sm ghost" id="syncCopy">Copiază codul</button>
-          <button class="btn sm" id="syncNow">Sincronizează acum</button>
-        </div>
-        <div class="muted" id="syncStatus" style="margin-top:10px"></div>
-        <button class="btn danger" id="syncStop" style="margin-top:12px">Oprește sincronizarea pe acest telefon</button>
-      </div>
-    </div>
-
-    <div class="card">
       <h3>Backup</h3>
       <p class="muted">Salvează o copie a tuturor datelor (ca fișier), pentru siguranță.</p>
       <button class="btn ghost" id="exportData">Descarcă backup (.json)</button>
@@ -219,25 +196,10 @@
     </div>
   </div>
 
-  <!-- Modal cod sincronizare -->
-  <div class="overlay hidden" id="connectModal" onclick="if(event.target===this)this.classList.add('hidden')">
-    <div class="modal">
-      <h3>Conectează cu cod</h3>
-      <p class="muted">Introdu codul afișat pe celălalt telefon. Datele de pe acest telefon vor fi înlocuite cu cele din cloud.</p>
-      <label>Cod de sincronizare</label>
-      <input id="connectCode" type="text" placeholder="lipește codul aici" />
-      <div class="row" style="margin-top:16px;gap:10px">
-        <button type="button" class="btn ghost" id="connectCancel" style="margin:0" onclick="this.closest('.overlay').classList.add('hidden')">Anulează</button>
-        <button class="btn" id="connectConfirm" style="margin:0">Conectează</button>
-      </div>
-    </div>
-  </div>
-
 <script>
 /* =================== Date & stocare =================== */
 const STORE = 'crm_selectbarber_v1';
 const DEFAULT_ENTITIES = ['Filiala 1', 'Filiala 2', 'Filiala 3', 'Academia'];
-const SYNC_BASE = 'https://jsonblob.com/api/jsonBlob';
 
 function blank(){ return { entities: DEFAULT_ENTITIES.slice(), figures: [], loans: [], updatedAt: Date.now() }; }
 function load(){
@@ -245,10 +207,9 @@ function load(){
   return blank();
 }
 let db = load();
-let syncId = localStorage.getItem(STORE+'_sync') || null;
 
 function persist(){ localStorage.setItem(STORE, JSON.stringify(db)); }
-function save(){ db.updatedAt = Date.now(); persist(); schedulePush(); }
+function save(){ db.updatedAt = Date.now(); persist(); }
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -440,104 +401,15 @@ exportData.onclick=()=>{
   a.download='crm-select-barber-'+today()+'.json'; a.click();
 };
 
-/* =================== Sincronizare (cloud opțional) =================== */
-let pushTimer=null;
-function setSyncBadge(){
-  if(syncId){ syncBadge.textContent='☁ Sincronizat'; syncBadge.style.color='var(--success)'; }
-  else { syncBadge.textContent='● Doar pe acest telefon'; syncBadge.style.color='var(--muted)'; }
-}
-function renderSyncUI(){
-  syncOff.classList.toggle('hidden', !!syncId);
-  syncOn.classList.toggle('hidden', !syncId);
-  if(syncId) syncCode.textContent = syncId;
-  setSyncBadge();
-}
-function setStatus(msg, ok){ if(syncStatus){ syncStatus.textContent=msg; syncStatus.style.color= ok===false?'var(--danger)': ok? 'var(--success)':'var(--muted)'; } }
-
-async function pushNow(){
-  if(!syncId) return;
-  try{
-    setStatus('Se trimite...', null);
-    const r = await fetch(SYNC_BASE+'/'+syncId, { method:'PUT',
-      headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(db) });
-    if(!r.ok) throw new Error(r.status);
-    setStatus('Sincronizat ✓ '+new Date().toLocaleTimeString('ro-RO'), true);
-  }catch(e){ setStatus('Nu s-a putut trimite (verifică internetul). Datele sunt salvate pe telefon.', false); }
-}
-function schedulePush(){ if(!syncId) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushNow, 1200); }
-
-async function pullNow(silent){
-  if(!syncId) return;
-  try{
-    if(!silent) setStatus('Se aduc datele...', null);
-    const r = await fetch(SYNC_BASE+'/'+syncId, { headers:{'Accept':'application/json'} });
-    if(!r.ok) throw new Error(r.status);
-    const remote = await r.json();
-    if(remote && typeof remote==='object' && remote.entities){
-      if((remote.updatedAt||0) >= (db.updatedAt||0)){
-        db = Object.assign(blank(), remote); persist();
-        fillEntitySelects(); renderAll(); renderEntityEditors();
-      }
-    }
-    if(!silent) setStatus('Sincronizat ✓ '+new Date().toLocaleTimeString('ro-RO'), true);
-  }catch(e){ if(!silent) setStatus('Nu s-a putut aduce (verifică internetul).', false); }
-}
-
-syncStart.onclick=async()=>{
-  if(!confirm('Pornești sincronizarea în cloud? Vei primi un cod de dat celorlalte telefoane.')) return;
-  try{
-    syncStart.disabled=true; syncStart.textContent='Se creează...';
-    const r = await fetch(SYNC_BASE, { method:'POST',
-      headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(db) });
-    if(!r.ok) throw new Error(r.status);
-    const loc = r.headers.get('Location') || '';
-    const id = loc.split('/').pop();
-    if(!id) throw new Error('fără cod');
-    syncId = id; localStorage.setItem(STORE+'_sync', id);
-    renderSyncUI(); setStatus('Sincronizat ✓', true);
-    alert('Sincronizare pornită! Codul tău:\n\n'+id+'\n\nIntrodu-l pe celelalte telefoane la „Conectează cu un cod existent".');
-  }catch(e){ alert('Nu s-a putut porni sincronizarea. Verifică internetul și încearcă din nou.'); }
-  finally{ syncStart.disabled=false; syncStart.textContent='Pornește sincronizarea'; }
-};
-syncConnect.onclick=()=>{ connectCode.value=''; connectModal.classList.remove('hidden'); };
-connectCancel.onclick=()=>connectModal.classList.add('hidden');
-connectConfirm.onclick=async()=>{
-  const id=connectCode.value.trim(); if(!id){ alert('Introdu codul.'); return; }
-  try{
-    const r=await fetch(SYNC_BASE+'/'+id, { headers:{'Accept':'application/json'} });
-    if(!r.ok) throw new Error(r.status);
-    const remote=await r.json();
-    if(!remote || !remote.entities) throw new Error('cod invalid');
-    db=Object.assign(blank(), remote); persist();
-    syncId=id; localStorage.setItem(STORE+'_sync', id);
-    connectModal.classList.add('hidden');
-    fillEntitySelects(); renderAll(); renderEntityEditors(); renderSyncUI();
-    alert('Conectat! Acest telefon vede acum aceleași date.');
-  }catch(e){ alert('Cod invalid sau fără internet. Verifică și încearcă din nou.'); }
-};
-syncStop.onclick=()=>{
-  if(!confirm('Oprești sincronizarea pe acest telefon? Datele rămân salvate local.')) return;
-  syncId=null; localStorage.removeItem(STORE+'_sync'); renderSyncUI();
-};
-syncNow.onclick=async()=>{ await pullNow(false); await pushNow(); };
-syncCopy.onclick=async()=>{
-  try{ await navigator.clipboard.writeText(syncId); syncCopy.textContent='Copiat ✓';
-    setTimeout(()=>syncCopy.textContent='Copiază codul',1500); }
-  catch(e){ alert('Copiază manual codul:\n\n'+syncId); }
-};
-
 /* =================== Init =================== */
 filterEntity.onchange=renderFigures;
 function renderAll(){ renderDash(); renderFigures(); renderLoans(); renderEntityEditors(); }
 function init(){
   fillEntitySelects();
   fDate.value=today(); lDate.value=today();
-  ['repayModal','connectModal'].forEach(id=>{
-    const ov=$(id);
-    ov.addEventListener('click', e=>{ if(e.target===ov) closeModal(id); });
-  });
-  renderAll(); renderSyncUI();
-  if(syncId) pullNow(true);
+  const ov=$('repayModal');
+  ov.addEventListener('click', e=>{ if(e.target===ov) closeModal('repayModal'); });
+  renderAll();
 }
 init();
 </script>

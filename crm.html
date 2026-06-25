@@ -435,7 +435,12 @@ let supaPushTimer = null;
 const supaOn = () => !!(supa.url && supa.key);
 
 function supaHeaders(extra){
-  return Object.assign({ apikey: supa.key, Authorization: 'Bearer '+supa.key }, extra||{});
+  const k = (supa.key||'').trim();
+  const h = { apikey: k };
+  // Cheie clasică JWT (eyJ...) are nevoie de Authorization Bearer;
+  // cheile noi (sb_...) sunt rezolvate de gateway doar din apikey.
+  if(/^eyJ/.test(k)) h.Authorization = 'Bearer '+k;
+  return Object.assign(h, extra||{});
 }
 function supaSetStatus(msg, ok){
   const el=$('supaStatus'); if(!el) return;

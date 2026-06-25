@@ -451,8 +451,16 @@ function renderSupaUI(){
   }
 }
 
+function supaBase(){
+  let u = (supa.url||'').trim();
+  try{ return new URL(u).origin; }            // ia doar https://host, ignoră orice cale lipită din greșeală
+  catch(e){
+    u = u.replace(/^\s*https?:\/\//i,'').replace(/\/.*$/,'').replace(/\s+/g,'');
+    return u ? 'https://'+u : '';
+  }
+}
 async function supaLoad(){
-  const r = await fetch(supa.url.replace(/\/+$/,'')+'/rest/v1/crm_state?id=eq.'+SUPA_ROW+'&select=data',
+  const r = await fetch(supaBase()+'/rest/v1/crm_state?id=eq.'+SUPA_ROW+'&select=data',
     { headers: supaHeaders() });
   if(!r.ok) throw new Error('HTTP '+r.status);
   const rows = await r.json();
@@ -460,7 +468,7 @@ async function supaLoad(){
 }
 async function supaUpsert(){
   const body = [{ id: SUPA_ROW, data: db, updated_at: new Date().toISOString() }];
-  const r = await fetch(supa.url.replace(/\/+$/,'')+'/rest/v1/crm_state',
+  const r = await fetch(supaBase()+'/rest/v1/crm_state',
     { method:'POST', headers: supaHeaders({ 'Content-Type':'application/json',
         'Prefer':'resolution=merge-duplicates,return=minimal' }), body: JSON.stringify(body) });
   if(!r.ok) throw new Error('HTTP '+r.status);

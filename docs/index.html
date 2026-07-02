@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v5.4 · dispozitiv nou prin login</div>
+      <div style="margin-top:4px">v5.5 · fix dată/lună (fus orar)</div>
     </div>
   </aside>
 
@@ -478,7 +478,9 @@ const $=(s,r=document)=>r.querySelector(s);
 const fmt=n=>Number(n||0).toLocaleString('ro-RO',{maximumFractionDigits:0})+' '+CURRENCY;
 const fmt2=n=>Number(n||0).toLocaleString('ro-RO',{minimumFractionDigits:0,maximumFractionDigits:2});
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const todayISO=()=>new Date().toISOString().slice(0,10);
+const pad2=n=>String(n).padStart(2,'0');
+const ymd=(y,m0,d)=>y+'-'+pad2(m0+1)+'-'+pad2(d); // m0 = luna 0-indexată; construiește data LOCAL (fără UTC)
+const todayISO=()=>{ const d=new Date(); return ymd(d.getFullYear(),d.getMonth(),d.getDate()); };
 const MONTHS=['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Noi','Dec'];
 const MONTHS_FULL=['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
 
@@ -500,9 +502,8 @@ let PERIOD={mode:'month', year:now.getFullYear(), month:now.getMonth(), from:tod
 
 function periodRange(){
   if(PERIOD.mode==='month'){
-    const f=new Date(PERIOD.year,PERIOD.month,1);
-    const t=new Date(PERIOD.year,PERIOD.month+1,0);
-    return [f.toISOString().slice(0,10), t.toISOString().slice(0,10)];
+    const last=new Date(PERIOD.year,PERIOD.month+1,0).getDate();
+    return [ymd(PERIOD.year,PERIOD.month,1), ymd(PERIOD.year,PERIOD.month,last)];
   }
   if(PERIOD.mode==='year'){ return [PERIOD.year+'-01-01', PERIOD.year+'-12-31']; }
   if(PERIOD.mode==='all'){ return ['0000-01-01','9999-12-31']; }
@@ -518,7 +519,7 @@ function inRange(dateStr,f,t){ return dateStr>=f && dateStr<=t; }
 
 /* Filtre de interval PER PAGINĂ (Încasări, Cheltuieli, Cursanți) — independente */
 function rangeOf(P){
-  if(P.mode==='month'){ const f=new Date(P.year,P.month,1); const t=new Date(P.year,P.month+1,0); return [f.toISOString().slice(0,10), t.toISOString().slice(0,10)]; }
+  if(P.mode==='month'){ const last=new Date(P.year,P.month+1,0).getDate(); return [ymd(P.year,P.month,1), ymd(P.year,P.month,last)]; }
   if(P.mode==='year'){ return [P.year+'-01-01', P.year+'-12-31']; }
   if(P.mode==='custom'){ return [P.from||'0000-01-01', P.to||'9999-12-31']; }
   return ['0000-01-01','9999-12-31']; // tot

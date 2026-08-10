@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v6.0 · Evenimente + Bază de clienți</div>
+      <div style="margin-top:4px">v6.1 · venituri unite + reduceri</div>
     </div>
   </aside>
 
@@ -553,11 +553,13 @@ function pfWidget(k){
 
 /* aggregate income/expense/profit + students for a range */
 function aggregate(f,t){
-  const income=DB.payments.filter(p=>inRange(p.date,f,t)).reduce((a,p)=>a+Number(p.amount||0),0);
+  const courseIncome=DB.payments.filter(p=>inRange(p.date,f,t)).reduce((a,p)=>a+Number(p.amount||0),0);
+  const eventIncome=eventIncomeInRange(f,t);
+  const income=courseIncome+eventIncome;
   const expense=DB.expenses.filter(e=>inRange(e.date,f,t)).reduce((a,e)=>a+Number(e.amount||0),0);
   const newStudents=DB.students.filter(s=>inRange(s.startDate||'',f,t)).length;
   const activeStudents=DB.students.filter(s=>s.status==='in_curs').length;
-  return {income, expense, profit:income-expense, newStudents, activeStudents};
+  return {income, courseIncome, eventIncome, expense, profit:income-expense, newStudents, activeStudents};
 }
 
 /* ============================================================
@@ -689,7 +691,10 @@ function clientEvents(clientId){
   return res.sort((a,b)=>(b.ev.date||'').localeCompare(a.ev.date||''));
 }
 function eventPaid(ev){ return (ev.participants||[]).reduce((a,p)=>a+Number(p.paid||0),0); }
-function eventDue(ev){ return (ev.participants||[]).reduce((a,p)=>a+Number(p.fee||0),0); }
+function partDue(p){ return Math.max(0, Number(p.fee||0)-Number(p.discount||0)); } // de plată după reducere
+function eventDue(ev){ return (ev.participants||[]).reduce((a,p)=>a+partDue(p),0); }
+function eventDiscount(ev){ return (ev.participants||[]).reduce((a,p)=>a+Number(p.discount||0),0); }
+function eventIncomeInRange(f,t){ let s=0; (DB.events||[]).forEach(ev=>{ if(inRange(ev.date||'',f,t)) s+=eventPaid(ev); }); return s; }
 
 /* ---------- EVENIMENTE ---------- */
 function eventsFiltered(){
@@ -767,7 +772,7 @@ function viewEventDetail(id){
 function participantsList(ev){
   return (ev.participants||[]).slice().sort((a,b)=>{const ca=clientById(a.clientId),cb=clientById(b.clientId);return ((ca&&ca.name)||'').localeCompare((cb&&cb.name)||'');}).map(p=>{
     const c=clientById(p.clientId)||{name:'(client șters)',phone:''};
-    const fee=Number(p.fee||0), pd=Number(p.paid||0), rest=Math.max(0,fee-pd);
+    const fee=Number(p.fee||0), disc=Number(p.discount||0), net=Math.max(0,fee-disc), pd=Number(p.paid||0), rest=Math.max(0,net-pd);
     return `<div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
         <div style="min-width:0" onclick="openClientFromEvent('${p.clientId}')" title="Vezi clientul">
@@ -775,8 +780,9 @@ function participantsList(ev){
           <div style="color:var(--muted);font-size:12.5px">${c.phone?'📞 '+esc(c.phone):''}${p.note?' · '+esc(p.note):''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="color:var(--success);font-weight:800">${fmt(pd)}${fee>0?` <span style="color:var(--muted);font-weight:600;font-size:12px">/ ${fmt(fee)}</span>`:''}</div>
-          ${rest>0?`<div style="color:var(--warning);font-size:12px">rest ${fmt(rest)}</div>`:(fee>0?`<div style="color:var(--success);font-size:12px">achitat integral</div>`:'')}
+          <div style="color:var(--success);font-weight:800">${fmt(pd)}${net>0?` <span style="color:var(--muted);font-weight:600;font-size:12px">/ ${fmt(net)}</span>`:''}</div>
+          ${disc>0?`<div style="color:var(--accent,#c9a227);font-size:11.5px">reducere ${fmt(disc)}</div>`:''}
+          ${rest>0?`<div style="color:var(--warning);font-size:12px">rest ${fmt(rest)}</div>`:(net>0?`<div style="color:var(--success);font-size:12px">achitat integral</div>`:'')}
           <div class="row-actions" style="justify-content:flex-end;margin-top:4px">
             <button class="icon-btn" title="Editează" onclick="openParticipantModal('${ev.id}','${p.id}')">✏️</button>
             <button class="icon-btn danger" title="Elimină" onclick="delParticipant('${ev.id}','${p.id}')">🗑️</button>
@@ -825,26 +831,30 @@ function openParticipantModal(eventId, partId){
     <div class="field"><label>Telefon *</label><input id="pt_phone" list="clientsDL" value="${esc(c?c.phone:'')}" placeholder="07xxxxxxxx" ${p?'readonly':''} oninput="var cc=clientByPhone(this.value); if(cc){var n=document.getElementById('pt_name'); if(n&&!n.value)n.value=cc.name;}"><datalist id="clientsDL">${dl}</datalist><div class="hint">Clientul e identificat după telefon. Dacă există deja, se leagă automat.</div></div>
     <div class="field"><label>Nume</label><input id="pt_name" value="${esc(c?c.name:'')}" placeholder="numele participantului"></div>
     <div class="field-row">
-      <div class="field"><label>Achitat (${CURRENCY})</label><input id="pt_paid" type="number" min="0" value="${p?Number(p.paid||0):(ev.price||'')}"></div>
-      <div class="field"><label>Taxă (${CURRENCY})</label><input id="pt_fee" type="number" min="0" value="${p?Number(p.fee||0):(ev.price||'')}"></div>
+      <div class="field"><label>Taxă (${CURRENCY})</label><input id="pt_fee" type="number" min="0" value="${p?Number(p.fee||0):(ev.price||'')}" oninput="_ptNet()"></div>
+      <div class="field"><label>Reducere (${CURRENCY})</label><input id="pt_disc" type="number" min="0" value="${p?Number(p.discount||0):0}" oninput="_ptNet()"></div>
     </div>
-    <div class="field"><label>Notă</label><input id="pt_note" value="${esc(p?p.note:'')}" placeholder="opțional (ex. plătește restul la eveniment)"></div>
+    <div class="field"><label>Achitat (${CURRENCY})</label><input id="pt_paid" type="number" min="0" value="${p?Number(p.paid||0):(ev.price||'')}"><div class="hint" id="pt_nethint"></div></div>
+    <div class="field"><label>Notă</label><input id="pt_note" value="${esc(p?p.note:'')}" placeholder="opțional (ex. a adus 2 invitați)"></div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveParticipant('${eventId}','${partId||''}')">${p?'Salvează':'Adaugă'}</button>`);
+  _ptNet();
 }
+function _ptNet(){ const fe=$('#pt_fee'),de=$('#pt_disc'),h=$('#pt_nethint'); if(!h)return; const fee=Number((fe&&fe.value)||0),d=Number((de&&de.value)||0); const net=Math.max(0,fee-d); h.textContent=d>0?('De plată după reducere: '+fmt(net)):''; }
 function saveParticipant(eventId, partId){
   const ev=(DB.events||[]).find(e=>e.id===eventId); if(!ev) return;
   const phone=normPhone($('#pt_phone').value), name=($('#pt_name').value||'').trim();
   const paid=Number($('#pt_paid').value||0), fee=Number($('#pt_fee').value||0), note=($('#pt_note').value||'').trim();
   if(!ev.participants) ev.participants=[];
+  const disc=Number($('#pt_disc').value||0);
   if(partId){
     const p=ev.participants.find(x=>x.id===partId); if(!p) return;
-    p.paid=paid; p.fee=fee; p.note=note;
+    p.paid=paid; p.fee=fee; p.discount=disc; p.note=note;
     const c=clientById(p.clientId); if(c && name) c.name=name;
   } else {
     if(!phone) return toast('Telefonul e obligatoriu','err');
     const c=findOrCreateClient(phone,name);
     if(ev.participants.some(x=>x.clientId===c.id)) return toast('Acest client e deja în listă','err');
-    ev.participants.push({id:uid(), clientId:c.id, paid, fee, note, createdAt:Date.now()});
+    ev.participants.push({id:uid(), clientId:c.id, paid, fee, discount:disc, note, createdAt:Date.now()});
   }
   save(); closeModal(); render(); toast('Participant salvat','ok');
 }
@@ -989,7 +999,7 @@ function viewDashboard(){
     <button onclick="go('instructors')"><span class="qa-ic">🧑‍🏫</span>Salarii</button>
   </div>
   <div class="grid kpis">
-    <div class="card kpi green"><span class="ic">💰</span><div class="label">Venituri</div><div class="value">${fmt(a.income)}</div><div class="sub">${periodLabel()}</div></div>
+    <div class="card kpi green"><span class="ic">💰</span><div class="label">Venituri</div><div class="value">${fmt(a.income)}</div><div class="sub">${a.eventIncome>0?`🎓 ${fmt(a.courseIncome)} · 🎤 ${fmt(a.eventIncome)}`:periodLabel()}</div></div>
     <div class="card kpi red"><span class="ic">🧾</span><div class="label">Cheltuieli</div><div class="value">${fmt(a.expense)}</div><div class="sub">${periodLabel()}</div></div>
     <div class="card kpi ${a.profit>=0?'gold':'red'}"><span class="ic">📈</span><div class="label">Profit</div><div class="value">${fmt(a.profit)}</div><div class="sub">Marjă ${margin}%</div></div>
     <div class="card kpi blue"><span class="ic">🎓</span><div class="label">Cursanți noi</div><div class="value">${a.newStudents}</div><div class="sub">${a.activeStudents} activi în total</div></div>
@@ -1028,6 +1038,7 @@ function viewDashboard(){
 function monthlySeries(year){
   const inc=Array(12).fill(0), exp=Array(12).fill(0);
   DB.payments.forEach(p=>{ if(p.date&&+p.date.slice(0,4)===year) inc[+p.date.slice(5,7)-1]+=Number(p.amount||0); });
+  (DB.events||[]).forEach(ev=>{ if(ev.date&&+ev.date.slice(0,4)===year) inc[+ev.date.slice(5,7)-1]+=eventPaid(ev); });
   DB.expenses.forEach(e=>{ if(e.date&&+e.date.slice(0,4)===year) exp[+e.date.slice(5,7)-1]+=Number(e.amount||0); });
   return {inc,exp};
 }
@@ -1483,6 +1494,7 @@ function viewReports(){
   const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
   // income by course
   const byCourse={}; DB.payments.filter(p=>inRange(p.date,f,t)).forEach(p=>{const s=studentById(p.studentId);const c=s?courseById(s.courseId):null;const k=c?c.name:'Altele';byCourse[k]=(byCourse[k]||0)+Number(p.amount||0);});
+  if(a.eventIncome>0) byCourse['🎤 Masterclass / Evenimente']=(byCourse['🎤 Masterclass / Evenimente']||0)+a.eventIncome;
   const courseRows=Object.entries(byCourse).sort((a,b)=>b[1]-a[1]);
   // monthly table for year mode
   const year=PERIOD.mode==='year'?PERIOD.year:(PERIOD.mode==='month'?PERIOD.year:now.getFullYear());

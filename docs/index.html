@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v5.5 · fix dată/lună (fus orar)</div>
+      <div style="margin-top:4px">v6.0 · Evenimente + Bază de clienți</div>
     </div>
   </aside>
 
@@ -452,7 +452,7 @@ const PAY_METHODS=['Numerar','Card','Transfer bancar','Online'];
 let DB=load();
 
 function blankDB(){
-  return {courses:JSON.parse(JSON.stringify(DEFAULT_COURSES)), students:[], payments:[], expenses:[], settings:{academyName:'Select Academy'}, createdAt:Date.now()};
+  return {courses:JSON.parse(JSON.stringify(DEFAULT_COURSES)), students:[], payments:[], expenses:[], events:[], clients:[], settings:{academyName:'Select Academy'}, createdAt:Date.now()};
 }
 function load(){
   try{
@@ -463,6 +463,8 @@ function load(){
     d.students=d.students||[]; d.payments=d.payments||[]; d.expenses=d.expenses||[];
     d.settings=d.settings||{academyName:'Select Academy'};
     d.instructors=d.instructors||[];
+    d.events=d.events||[]; d.events.forEach(ev=>{ if(!ev.participants) ev.participants=[]; });
+    d.clients=d.clients||[];
     // creează automat profesori din numele deja folosite pe cursanți (o singură dată)
     d.students.forEach(s=>{ const nm=(s.instructor||'').trim(); if(nm && !d.instructors.some(i=>(i.name||'').toLowerCase()===nm.toLowerCase())) d.instructors.push({id:uid(),name:nm,percent:50,phone:'',createdAt:Date.now()}); });
     return d;
@@ -567,6 +569,8 @@ const NAV=[
   {id:'payments',  label:'Încasări',       icon:'💰'},
   {id:'expenses',  label:'Cheltuieli',     icon:'🧾'},
   {id:'reports',   label:'Rapoarte',       icon:'📈'},
+  {id:'events',    label:'Evenimente',     icon:'🎤'},
+  {id:'clients',   label:'Baza de clienți',icon:'📇'},
   {id:'instructors',label:'Profesori',     icon:'🧑‍🏫'},
   {id:'courses',   label:'Cursuri',        icon:'✂️'},
   {id:'myzone',    label:'Zona mea',       icon:'🙋'},
@@ -578,8 +582,8 @@ const MOBILE_NAV=['dashboard','students','payments','expenses','reports'];
    - administrator = vede tot + adaugă/editează date, FĂRĂ ștergere și fără management conturi/reset
    - angajat (profesor) = vede doar „Zona mea": cursanții lui pe lună + salariul lui */
 const ROLE_ROUTES={
-  proprietar:['dashboard','students','payments','expenses','reports','instructors','courses','settings'],
-  administrator:['dashboard','students','payments','expenses','reports','instructors','courses','settings'],
+  proprietar:['dashboard','students','payments','expenses','reports','events','clients','instructors','courses','settings'],
+  administrator:['dashboard','students','payments','expenses','reports','events','clients','instructors','courses','settings'],
   angajat:['myzone','settings']
 };
 const ROLE_LABEL={proprietar:'Proprietar',administrator:'Administrator',angajat:'Angajat / Profesor'};
@@ -595,7 +599,7 @@ function buildNav(){
   $('#navMobile').innerHTML=MOBILE_NAV.filter(id=>Auth.can(id)).map(id=>{const n=NAV.find(x=>x.id===id);return `<button data-r="${n.id}" onclick="go('${n.id}')"><span class="ic">${n.icon}</span>${n.label.split(' ')[0]}</button>`}).join('')
     +`<button onclick="toggleDrawer(true)"><span class="ic">⋯</span>Mai mult</button>`;
 }
-function go(r){ if(!Auth.can(r)){ toast('Nu ai acces la această secțiune','err'); return; } route=r; toggleDrawer(false); render(); }
+function go(r){ if(!Auth.can(r)){ toast('Nu ai acces la această secțiune','err'); return; } route=r; eventOpenId=null; clientOpenId=null; toggleDrawer(false); render(); }
 function toggleDrawer(open){ $('#drawer').classList.toggle('open', open); }
 function markActive(){
   document.querySelectorAll('[data-r]').forEach(b=>b.classList.toggle('active', b.dataset.r===route));
@@ -630,7 +634,7 @@ function setPeriodMode(m){ PERIOD.mode=m; render(); }
    ============================================================ */
 function render(){
   if(Auth.authed() && !Auth.can(route)) route=Auth.landing();
-  const titles={dashboard:'Tablou de bord',students:'Cursanți',payments:'Încasări',expenses:'Cheltuieli',reports:'Rapoarte financiare',courses:'Tipuri de cursuri',myzone:'Zona mea',settings:'Setări & backup'};
+  const titles={dashboard:'Tablou de bord',students:'Cursanți',payments:'Încasări',expenses:'Cheltuieli',reports:'Rapoarte financiare',events:'Evenimente',clients:'Baza de clienți',courses:'Tipuri de cursuri',myzone:'Zona mea',settings:'Setări & backup'};
   $('#pageTitle').textContent=titles[route]||'CRM';
   const showPeriod=(route==='dashboard'||route==='reports');
   $('#topbarExtra').innerHTML=showPeriod?periodWidget():'';
@@ -640,13 +644,15 @@ function render(){
   else if(route==='payments') v.innerHTML=viewPayments();
   else if(route==='expenses') v.innerHTML=viewExpenses();
   else if(route==='reports') v.innerHTML=viewReports();
+  else if(route==='events') v.innerHTML=viewEvents();
+  else if(route==='clients') v.innerHTML=viewClients();
   else if(route==='instructors') v.innerHTML=viewInstructors();
   else if(route==='courses') v.innerHTML=viewCourses();
   else if(route==='myzone') v.innerHTML=viewMyZone();
   else if(route==='settings') v.innerHTML=viewSettings();
   markActive();
   document.body.dataset.role=Auth.role()||'';
-  const fabRoutes=['dashboard','students','payments','expenses','instructors','courses'];
+  const fabRoutes=['dashboard','students','payments','expenses','instructors','courses','events','clients'];
   const fab=$('#fab'); if(fab) fab.classList.toggle('hide', !fabRoutes.includes(route));
   if(route==='dashboard') drawDashboardChart();
   if(typeof updateUserLine==='function') updateUserLine();
@@ -656,9 +662,308 @@ function quickAdd(){
   if(route==='expenses') return openExpenseModal();
   if(route==='instructors') return openInstructorModal();
   if(route==='courses') return openCourseModal();
+  if(route==='events') return eventOpenId?openParticipantModal(eventOpenId):openEventModal();
+  if(route==='clients') return openClientModal();
   return openStudentModal();
 }
 function greeting(){ const h=new Date().getHours(); return h<12?'Bună dimineața':h<18?'Bună ziua':'Bună seara'; }
+
+/* ============================================================
+   EVENIMENTE (masterclass) + BAZĂ DE CLIENȚI
+   ============================================================ */
+let eventOpenId=null, clientOpenId=null, eventSearch='', clientSearch='';
+
+function clientById(id){ return (DB.clients||[]).find(c=>c.id===id); }
+function normPhone(p){ return (p||'').replace(/[^\d+]/g,''); }
+function clientByPhone(phone){ const n=normPhone(phone); return n?(DB.clients||[]).find(c=>normPhone(c.phone)===n):null; }
+function findOrCreateClient(phone,name){
+  if(!DB.clients) DB.clients=[];
+  let c=clientByPhone(phone);
+  if(c){ if(name && (!c.name||c.name==='Fără nume')) c.name=name; return c; }
+  c={id:uid(), name:(name||'').trim()||'Fără nume', phone:normPhone(phone), email:'', notes:'', createdAt:Date.now()};
+  DB.clients.push(c); return c;
+}
+function clientEvents(clientId){
+  const res=[];
+  (DB.events||[]).forEach(ev=>{ (ev.participants||[]).forEach(p=>{ if(p.clientId===clientId) res.push({ev,p}); }); });
+  return res.sort((a,b)=>(b.ev.date||'').localeCompare(a.ev.date||''));
+}
+function eventPaid(ev){ return (ev.participants||[]).reduce((a,p)=>a+Number(p.paid||0),0); }
+function eventDue(ev){ return (ev.participants||[]).reduce((a,p)=>a+Number(p.fee||0),0); }
+
+/* ---------- EVENIMENTE ---------- */
+function eventsFiltered(){
+  let list=(DB.events||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+  if(eventSearch){ const q=eventSearch.toLowerCase(); list=list.filter(e=>(e.name||'').toLowerCase().includes(q)||(e.description||'').toLowerCase().includes(q)||(e.location||'').toLowerCase().includes(q)||(e.date||'').includes(q)); }
+  return list;
+}
+function viewEvents(){
+  if(eventOpenId) return viewEventDetail(eventOpenId);
+  const evs=(DB.events||[]);
+  const totalPaid=evs.reduce((a,e)=>a+eventPaid(e),0);
+  return `
+  <div class="toolbar">
+    <div class="card kpi green" style="padding:12px 18px;flex:1;min-width:170px"><div class="label">Total încasat din evenimente</div><div class="value" style="font-size:22px">${fmt(totalPaid)}</div></div>
+    <div class="card kpi" style="padding:12px 18px;flex:1;min-width:120px"><div class="label">Evenimente</div><div class="value" style="font-size:22px;color:var(--text)">${evs.length}</div></div>
+    <button class="btn btn-primary" onclick="openEventModal()">＋ Eveniment</button>
+  </div>
+  ${!evs.length?`<div class="card empty"><div class="big">🎤</div>Niciun eveniment încă.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openEventModal()">＋ Creează primul eveniment</button></div>`:`
+  <input class="search block" placeholder="🔎 Caută eveniment după nume, dată, loc…" value="${esc(eventSearch)}" oninput="eventSearch=this.value;rerenderEvents()">
+  <div id="eventsList">${eventsCards(eventsFiltered())}</div>`}`;
+}
+function rerenderEvents(){ const el=$('#eventsList'); if(el) el.innerHTML=eventsCards(eventsFiltered()); }
+function eventsCards(list){
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Niciun eveniment găsit.</div>`;
+  return list.map(ev=>{
+    const np=(ev.participants||[]).length, paid=eventPaid(ev);
+    return `<div class="card" style="cursor:pointer;margin-bottom:12px" onclick="openEvent('${ev.id}')">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+        <div style="min-width:0">
+          <div style="font-weight:800;font-size:16px">${esc(ev.name||'Eveniment')}</div>
+          <div style="color:var(--muted);font-size:13px;margin-top:3px">📅 ${esc(ev.date||'—')}${ev.location?` · 📍 ${esc(ev.location)}`:''}</div>
+          ${ev.description?`<div style="color:var(--muted);font-size:12.5px;margin-top:6px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(ev.description)}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <span class="badge b-blue">${np} ${np===1?'participant':'participanți'}</span>
+          <div style="color:var(--success);font-weight:800;margin-top:8px">${fmt(paid)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openEvent(id){ eventOpenId=id; render(); }
+function closeEvent(){ eventOpenId=null; render(); }
+function viewEventDetail(id){
+  const ev=(DB.events||[]).find(e=>e.id===id);
+  if(!ev){ eventOpenId=null; return viewEvents(); }
+  const parts=(ev.participants||[]);
+  const paid=eventPaid(ev), due=eventDue(ev), rest=Math.max(0,due-paid);
+  return `
+  <button class="btn btn-ghost btn-sm" onclick="closeEvent()">← Toate evenimentele</button>
+  <div class="card" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">
+        <div style="font-weight:800;font-size:20px">${esc(ev.name||'Eveniment')}</div>
+        <div style="color:var(--muted);font-size:13.5px;margin-top:4px">📅 ${esc(ev.date||'—')}${ev.location?` · 📍 ${esc(ev.location)}`:''}${ev.price?` · 🎟️ ${fmt(ev.price)}/pers.`:''}</div>
+        ${ev.description?`<div style="color:var(--text);font-size:13.5px;margin-top:10px;white-space:pre-wrap;line-height:1.55">${esc(ev.description)}</div>`:''}
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" title="Editează" onclick="openEventModal('${ev.id}')">✏️</button>
+        <button class="icon-btn danger" title="Șterge" onclick="delEvent('${ev.id}')">🗑️</button>
+      </div>
+    </div>
+    <div class="grid kpis" style="margin-top:16px">
+      <div class="card kpi"><div class="label">Participanți</div><div class="value" style="font-size:20px;color:var(--text)">${parts.length}</div></div>
+      <div class="card kpi green"><div class="label">Încasat</div><div class="value" style="font-size:20px">${fmt(paid)}</div></div>
+      ${due>0?`<div class="card kpi"><div class="label">Rest de încasat</div><div class="value" style="font-size:20px;color:${rest>0?'var(--warning)':'var(--success)'}">${fmt(rest)}</div></div>`:''}
+    </div>
+  </div>
+  <div class="toolbar" style="margin-top:16px">
+    <h3 style="margin:0;font-size:16px;flex:1">Participanți (${parts.length})</h3>
+    <button class="btn btn-primary btn-sm" onclick="openParticipantModal('${ev.id}')">＋ Participant</button>
+  </div>
+  ${!parts.length?`<div class="card empty"><div class="big">👥</div>Niciun participant încă.<br><span style="color:var(--muted);font-size:13px">Adaugă participanți după numărul de telefon — se salvează automat în baza de clienți.</span></div>`:`<div id="eventParts">${participantsList(ev)}</div>`}`;
+}
+function participantsList(ev){
+  return (ev.participants||[]).slice().sort((a,b)=>{const ca=clientById(a.clientId),cb=clientById(b.clientId);return ((ca&&ca.name)||'').localeCompare((cb&&cb.name)||'');}).map(p=>{
+    const c=clientById(p.clientId)||{name:'(client șters)',phone:''};
+    const fee=Number(p.fee||0), pd=Number(p.paid||0), rest=Math.max(0,fee-pd);
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div style="min-width:0" onclick="openClientFromEvent('${p.clientId}')" title="Vezi clientul">
+          <div style="font-weight:700">${esc(c.name)}</div>
+          <div style="color:var(--muted);font-size:12.5px">${c.phone?'📞 '+esc(c.phone):''}${p.note?' · '+esc(p.note):''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="color:var(--success);font-weight:800">${fmt(pd)}${fee>0?` <span style="color:var(--muted);font-weight:600;font-size:12px">/ ${fmt(fee)}</span>`:''}</div>
+          ${rest>0?`<div style="color:var(--warning);font-size:12px">rest ${fmt(rest)}</div>`:(fee>0?`<div style="color:var(--success);font-size:12px">achitat integral</div>`:'')}
+          <div class="row-actions" style="justify-content:flex-end;margin-top:4px">
+            <button class="icon-btn" title="Editează" onclick="openParticipantModal('${ev.id}','${p.id}')">✏️</button>
+            <button class="icon-btn danger" title="Elimină" onclick="delParticipant('${ev.id}','${p.id}')">🗑️</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openEventModal(id){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul să modifici date','err');
+  const ev=id?(DB.events||[]).find(e=>e.id===id):null;
+  modal(ev?'Editează eveniment':'Eveniment nou',`
+    <div class="field"><label>Denumire *</label><input id="ev_name" value="${esc(ev?ev.name:'')}" placeholder="ex. Masterclass Fade"></div>
+    <div class="field-row">
+      <div class="field"><label>Data *</label><input id="ev_date" type="date" value="${ev?ev.date:todayISO()}"></div>
+      <div class="field"><label>Preț / persoană (${CURRENCY})</label><input id="ev_price" type="number" min="0" value="${ev&&ev.price?ev.price:''}"></div>
+    </div>
+    <div class="field"><label>Locație</label><input id="ev_loc" value="${esc(ev?ev.location:'')}" placeholder="ex. Chișinău, sala X"></div>
+    <div class="field"><label>Descriere</label><textarea id="ev_desc" placeholder="detalii, program, trainer, ce include…">${esc(ev?ev.description:'')}</textarea></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveEvent('${id||''}')">${ev?'Salvează':'Creează'}</button>`);
+  setTimeout(()=>{const i=$('#ev_name'); i&&i.focus();},50);
+}
+function saveEvent(id){
+  const name=($('#ev_name').value||'').trim(); if(!name) return toast('Denumirea e obligatorie','err');
+  const data={name, date:$('#ev_date').value||todayISO(), price:Number($('#ev_price').value||0), location:($('#ev_loc').value||'').trim(), description:($('#ev_desc').value||'').trim()};
+  if(!DB.events) DB.events=[];
+  if(id){ Object.assign(DB.events.find(e=>e.id===id), data); }
+  else { data.id=uid(); data.createdAt=Date.now(); data.participants=[]; DB.events.push(data); eventOpenId=data.id; }
+  save(); closeModal(); render(); toast(id?'Eveniment actualizat':'Eveniment creat','ok');
+}
+function delEvent(id){
+  if(!Auth.canDelete()) return toast('Doar proprietarul poate șterge','err');
+  const ev=(DB.events||[]).find(e=>e.id===id); if(!ev) return;
+  confirmModal('Ștergi evenimentul „'+esc(ev.name)+'"?','Se șterge și lista lui de participanți. Clienții rămân în baza de clienți.',()=>{
+    DB.events=DB.events.filter(e=>e.id!==id); eventOpenId=null; save(); render(); toast('Eveniment șters','ok');
+  });
+}
+function openParticipantModal(eventId, partId){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul să modifici date','err');
+  const ev=(DB.events||[]).find(e=>e.id===eventId); if(!ev) return;
+  const p=partId?(ev.participants||[]).find(x=>x.id===partId):null;
+  const c=p?clientById(p.clientId):null;
+  const dl=(DB.clients||[]).map(cl=>`<option value="${esc(cl.phone)}">${esc(cl.name)}</option>`).join('');
+  modal(p?'Editează participant':'Adaugă participant',`
+    <div class="field"><label>Telefon *</label><input id="pt_phone" list="clientsDL" value="${esc(c?c.phone:'')}" placeholder="07xxxxxxxx" ${p?'readonly':''} oninput="var cc=clientByPhone(this.value); if(cc){var n=document.getElementById('pt_name'); if(n&&!n.value)n.value=cc.name;}"><datalist id="clientsDL">${dl}</datalist><div class="hint">Clientul e identificat după telefon. Dacă există deja, se leagă automat.</div></div>
+    <div class="field"><label>Nume</label><input id="pt_name" value="${esc(c?c.name:'')}" placeholder="numele participantului"></div>
+    <div class="field-row">
+      <div class="field"><label>Achitat (${CURRENCY})</label><input id="pt_paid" type="number" min="0" value="${p?Number(p.paid||0):(ev.price||'')}"></div>
+      <div class="field"><label>Taxă (${CURRENCY})</label><input id="pt_fee" type="number" min="0" value="${p?Number(p.fee||0):(ev.price||'')}"></div>
+    </div>
+    <div class="field"><label>Notă</label><input id="pt_note" value="${esc(p?p.note:'')}" placeholder="opțional (ex. plătește restul la eveniment)"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveParticipant('${eventId}','${partId||''}')">${p?'Salvează':'Adaugă'}</button>`);
+}
+function saveParticipant(eventId, partId){
+  const ev=(DB.events||[]).find(e=>e.id===eventId); if(!ev) return;
+  const phone=normPhone($('#pt_phone').value), name=($('#pt_name').value||'').trim();
+  const paid=Number($('#pt_paid').value||0), fee=Number($('#pt_fee').value||0), note=($('#pt_note').value||'').trim();
+  if(!ev.participants) ev.participants=[];
+  if(partId){
+    const p=ev.participants.find(x=>x.id===partId); if(!p) return;
+    p.paid=paid; p.fee=fee; p.note=note;
+    const c=clientById(p.clientId); if(c && name) c.name=name;
+  } else {
+    if(!phone) return toast('Telefonul e obligatoriu','err');
+    const c=findOrCreateClient(phone,name);
+    if(ev.participants.some(x=>x.clientId===c.id)) return toast('Acest client e deja în listă','err');
+    ev.participants.push({id:uid(), clientId:c.id, paid, fee, note, createdAt:Date.now()});
+  }
+  save(); closeModal(); render(); toast('Participant salvat','ok');
+}
+function delParticipant(eventId, partId){
+  if(!Auth.canDelete()) return toast('Doar proprietarul poate șterge','err');
+  const ev=(DB.events||[]).find(e=>e.id===eventId); if(!ev) return;
+  confirmModal('Elimini participantul din eveniment?','Clientul rămâne în baza de clienți, cu tot istoricul lui.',()=>{
+    ev.participants=(ev.participants||[]).filter(x=>x.id!==partId); save(); render(); toast('Participant eliminat','ok');
+  });
+}
+
+/* ---------- BAZĂ DE CLIENȚI ---------- */
+function clientsFiltered(){
+  let list=(DB.clients||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(clientSearch){ const q=clientSearch.toLowerCase(); list=list.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.email||'').toLowerCase().includes(q)||(c.notes||'').toLowerCase().includes(q)); }
+  return list;
+}
+function viewClients(){
+  if(clientOpenId) return viewClientDetail(clientOpenId);
+  const all=(DB.clients||[]);
+  return `
+  <div class="toolbar">
+    <div class="card kpi" style="padding:12px 18px;flex:1;min-width:160px"><div class="label">Clienți în bază</div><div class="value" style="font-size:22px;color:var(--text)">${all.length}</div></div>
+    <button class="btn btn-primary" onclick="openClientModal()">＋ Client</button>
+  </div>
+  ${!all.length?`<div class="card empty"><div class="big">📇</div>Baza de clienți e goală.<br><span style="color:var(--muted);font-size:13px">Clienții apar automat când adaugi participanți la evenimente — sau îi adaugi manual aici.</span></div>`:`
+  <input class="search block" placeholder="🔎 Caută după nume sau telefon…" value="${esc(clientSearch)}" oninput="clientSearch=this.value;rerenderClients()">
+  <div id="clientsList">${clientsCards(clientsFiltered())}</div>`}`;
+}
+function rerenderClients(){ const el=$('#clientsList'); if(el) el.innerHTML=clientsCards(clientsFiltered()); }
+function clientsCards(list){
+  if(!list.length) return `<div class="card empty"><div class="big">🔎</div>Niciun client găsit.</div>`;
+  return list.map(c=>{
+    const evs=clientEvents(c.id), totalPaid=evs.reduce((a,x)=>a+Number(x.p.paid||0),0);
+    return `<div class="card" style="cursor:pointer;margin-bottom:10px" onclick="openClient('${c.id}')">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div style="min-width:0">
+          <div style="font-weight:700">${esc(c.name||'Fără nume')}</div>
+          <div style="color:var(--muted);font-size:12.5px">${c.phone?'📞 '+esc(c.phone):''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <span class="badge b-blue">${evs.length} ${evs.length===1?'eveniment':'evenimente'}</span>
+          <div style="color:var(--success);font-weight:700;margin-top:5px">${fmt(totalPaid)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openClient(id){ clientOpenId=id; render(); }
+function closeClient(){ clientOpenId=null; render(); }
+function openClientFromEvent(clientId){ eventOpenId=null; route='clients'; clientOpenId=clientId; render(); }
+function openEventFromClient(eventId){ clientOpenId=null; route='events'; eventOpenId=eventId; render(); }
+function viewClientDetail(id){
+  const c=clientById(id); if(!c){ clientOpenId=null; return viewClients(); }
+  const evs=clientEvents(id), totalPaid=evs.reduce((a,x)=>a+Number(x.p.paid||0),0);
+  return `
+  <button class="btn btn-ghost btn-sm" onclick="closeClient()">← Toți clienții</button>
+  <div class="card" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">
+        <div style="font-weight:800;font-size:20px">${esc(c.name||'Fără nume')}</div>
+        <div style="color:var(--muted);font-size:13.5px;margin-top:4px">${c.phone?'📞 '+esc(c.phone):''}${c.email?' · ✉️ '+esc(c.email):''}</div>
+        ${c.notes?`<div style="color:var(--text);font-size:13px;margin-top:8px;white-space:pre-wrap">${esc(c.notes)}</div>`:''}
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" title="Editează" onclick="openClientModal('${c.id}')">✏️</button>
+        <button class="icon-btn danger" title="Șterge" onclick="delClient('${c.id}')">🗑️</button>
+      </div>
+    </div>
+    <div class="grid kpis" style="margin-top:16px">
+      <div class="card kpi"><div class="label">Evenimente</div><div class="value" style="font-size:20px;color:var(--text)">${evs.length}</div></div>
+      <div class="card kpi green"><div class="label">Total achitat</div><div class="value" style="font-size:20px">${fmt(totalPaid)}</div></div>
+    </div>
+  </div>
+  <div class="toolbar" style="margin-top:16px"><h3 style="margin:0;font-size:16px">Istoric evenimente</h3></div>
+  ${!evs.length?`<div class="card empty"><div class="big">📭</div>Nu a participat încă la niciun eveniment.</div>`:
+  evs.map(({ev,p})=>`<div class="card" style="cursor:pointer;margin-bottom:10px" onclick="openEventFromClient('${ev.id}')">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div style="min-width:0"><div style="font-weight:700">${esc(ev.name||'Eveniment')}</div><div style="color:var(--muted);font-size:12.5px">📅 ${esc(ev.date||'—')}${ev.location?' · 📍 '+esc(ev.location):''}${p.note?' · '+esc(p.note):''}</div></div>
+      <div style="color:var(--success);font-weight:700;flex-shrink:0">${fmt(Number(p.paid||0))}</div>
+    </div>
+  </div>`).join('')}`;
+}
+function openClientModal(id){
+  if(!Auth.canAdd()) return toast('Nu ai dreptul să modifici date','err');
+  const c=id?clientById(id):null;
+  modal(c?'Editează client':'Client nou',`
+    <div class="field"><label>Nume *</label><input id="cl_name" value="${esc(c?c.name:'')}" placeholder="nume complet"></div>
+    <div class="field"><label>Telefon *</label><input id="cl_phone" value="${esc(c?c.phone:'')}" placeholder="07xxxxxxxx"></div>
+    <div class="field"><label>Email</label><input id="cl_email" value="${esc(c?c.email:'')}" placeholder="opțional"></div>
+    <div class="field"><label>Notițe</label><textarea id="cl_notes" placeholder="observații, preferințe, de unde ne cunoaște…">${esc(c?c.notes:'')}</textarea></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">Anulează</button><button class="btn btn-primary" onclick="saveClient('${id||''}')">${c?'Salvează':'Adaugă'}</button>`);
+  setTimeout(()=>{const i=$('#cl_name'); i&&i.focus();},50);
+}
+function saveClient(id){
+  const name=($('#cl_name').value||'').trim(), phone=normPhone($('#cl_phone').value);
+  if(!name) return toast('Numele e obligatoriu','err');
+  if(!phone) return toast('Telefonul e obligatoriu','err');
+  if(!DB.clients) DB.clients=[];
+  const dup=clientByPhone(phone);
+  if(id){
+    const c=clientById(id); if(!c) return;
+    if(dup && dup.id!==id) return toast('Există deja un client cu acest telefon','err');
+    c.name=name; c.phone=phone; c.email=($('#cl_email').value||'').trim(); c.notes=($('#cl_notes').value||'').trim();
+  } else {
+    if(dup) return toast('Există deja un client cu acest telefon','err');
+    DB.clients.push({id:uid(), name, phone, email:($('#cl_email').value||'').trim(), notes:($('#cl_notes').value||'').trim(), createdAt:Date.now()});
+  }
+  save(); closeModal(); render(); toast('Client salvat','ok');
+}
+function delClient(id){
+  if(!Auth.canDelete()) return toast('Doar proprietarul poate șterge','err');
+  const c=clientById(id); if(!c) return;
+  const evs=clientEvents(id);
+  confirmModal('Ștergi clientul „'+esc(c.name)+'"?', evs.length?('Apare la '+evs.length+' evenimente — va fi eliminat și din listele acelor evenimente.'):'Acțiunea nu poate fi anulată.',()=>{
+    (DB.events||[]).forEach(ev=>{ ev.participants=(ev.participants||[]).filter(p=>p.clientId!==id); });
+    DB.clients=DB.clients.filter(x=>x.id!==id); clientOpenId=null; save(); render(); toast('Client șters','ok');
+  });
+}
 
 /* ---------- DASHBOARD ---------- */
 function viewDashboard(){

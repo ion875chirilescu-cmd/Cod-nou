@@ -92,7 +92,14 @@ Toate datele de mai jos sunt **exemple** și trebuie înlocuite cu cele reale:
 
 Miniaturile din galerie sunt modele grafice desenate în CSS
 (clasele `.pattern-tiles`, `.pattern-parquet`, `.pattern-paint` etc.), ca site-ul
-să arate bine și fără poze. Când ai fotografii, înlocuiește în `index.html`:
+să arate bine și fără poze. **Direcția vizuală întunecată trăiește însă din
+fotografii** — sunt singurul element luminos din pagină, deci ele fac diferența
+între „arată bine" și „arată ca al unei firme serioase".
+
+Pozele se pun în `assets/img/lucrari/`. Nu trebuie modificat CSS-ul: încadrarea,
+decuparea și umbra de sub etichetă sunt deja pregătite.
+
+**În galerie** — înlocuiește în `index.html`:
 
 ```html
 <div class="work-img pattern-parquet"><span class="work-tag">Renovare completă</span></div>
@@ -107,7 +114,40 @@ cu:
 </div>
 ```
 
-și adaugă în CSS: `.work-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }`.
+**În cap de pagină** — o fotografie bună poate lua locul ilustrației. Înlocuiește
+tot blocul `<svg class="hero-illustration">…</svg>` cu:
+
+```html
+<img class="hero-photo" src="assets/img/lucrari/hero.jpg" alt="Apartament renovat în Chișinău" />
+```
+
+**În comparația înainte/după** — înlocuiește fiecare `<svg>` din `.ba-layer` cu
+un `<img>`. Cele două poze trebuie făcute **din exact același loc și unghi**,
+altfel cursorul nu mai are ce compara.
+
+#### Cum să faci pozele cu telefonul
+
+Nu ai nevoie de fotograf, ai nevoie de disciplină:
+
+- **Fotografiază orizontal (landscape).** Cadrele verticale se decupează urât.
+- **Lumină naturală, ziua.** Stinge becurile — amestecul de lumină galbenă de la
+  bec cu cea albastră de la fereastră strică toate culorile.
+- **Ține telefonul la înălțimea pieptului și drept**, nu înclinat în sus sau în
+  jos. Liniile verticale (colțuri, tocuri de ușă) trebuie să rămână verticale.
+- **Fotografiază dintr-un colț al camerei**, ca să se vadă două pereți și
+  adâncimea. Pozele făcute din mijloc, spre un singur perete, sunt plate.
+- **Strânge înainte:** scule, găleți, prelate, cabluri, prosoape. Un obiect
+  uitat pe jos anulează impresia de lucrare terminată.
+- **Fă și cadre de detaliu:** un colț de gresie tăiat la 45°, un rost drept, o
+  nișă de gips-carton. Detaliile dovedesc calitatea mai bine decât cadrele largi.
+- **Pentru „înainte și după": marchează locul.** Fă poza „înainte" și notează
+  unde ai stat, ca să revii exact acolo la final.
+
+#### Dimensiuni
+
+Minimum **1600 px pe latura lungă**, ideal 2000–2400. Comprimă înainte de urcare
+la sub ~300 KB per fișier ([squoosh.app](https://squoosh.app) e gratuit și merge
+în browser) — altfel site-ul se încarcă lent tocmai pe telefoanele clienților.
 
 ### Formularul de contact
 

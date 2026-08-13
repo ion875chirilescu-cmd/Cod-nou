@@ -50,7 +50,7 @@ etichete Open Graph, suport pentru `prefers-reduced-motion` și stiluri de print
 
 Toate datele de mai jos sunt **exemple** și trebuie înlocuite cu cele reale:
 
-1. **Telefon** — caută `+37369123456` și `069 123 456` în `index.html`
+1. **Telefon** — `+37376986728` / `076 986 728` în `index.html`
    (apare în header, în banda CTA, în contact, în footer, în butonul flotant,
    în linkurile de Viber și WhatsApp și în `schema.org`).
 2. **E-mail** — caută `contact@selectconstruct.md` în `index.html` și în
@@ -59,8 +59,10 @@ Toate datele de mai jos sunt **exemple** și trebuie înlocuite cu cele reale:
    `application/ld+json` din `<head>`.
 4. **Domeniu** — `https://www.selectconstruct.md/` din `<link rel="canonical">`
    și din marcajele Open Graph.
-5. **Cifre și lucrări** — statisticile din hero (`data-count`), lucrările din
-   portofoliu și recenziile sunt exemple realiste, dar tot exemple.
+5. **Cifre și lucrări** — din statisticile hero (`data-count`), doar „4 oameni în
+   echipă" e reală. „12 ani de experiență", „180 lucrări finalizate" și „98% clienți
+   mulțumiți" sunt estimări puse ca să fie credibile pentru o echipă de patru oameni —
+   înlocuiește-le cu cifrele tale. Lucrările din portofoliu și recenziile sunt tot exemple.
 
 ### Fotografii reale în portofoliu
 

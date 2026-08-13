@@ -12,8 +12,8 @@
     // Adresa pe care ajung solicitările din formular (metoda implicită: mailto).
     email: 'contact@selectconstruct.md',
 
-    // Numărul afișat în mesajele de eroare ale formularului.
-    phone: '069 123 456',
+    // Numărul afișat în mesajele formularului (eroare de trimitere, exemplu de format).
+    phone: '076 986 728',
 
     // Opțional: pune aici un endpoint care primește POST (Formspree, Getform,
     // Netlify Forms, propriul tău backend). Dacă e completat, formularul îl
@@ -333,7 +333,7 @@
       var type = $('#fType'), area = $('#fArea'), gdpr = $('#fGdpr');
 
       ok = setError(name, name.value.trim().length < 3 ? 'Scrie numele tău complet.' : '') && ok;
-      ok = setError(phone, phoneRe.test(phone.value.trim()) ? '' : 'Număr de telefon invalid (ex: 069 123 456).') && ok;
+      ok = setError(phone, phoneRe.test(phone.value.trim()) ? '' : 'Număr de telefon invalid (ex: ' + CONFIG.phone + ').') && ok;
       ok = setError(email, email.value.trim() && !emailRe.test(email.value.trim()) ? 'Adresa de e-mail nu pare corectă.' : '') && ok;
       ok = setError(type, type.value ? '' : 'Alege tipul lucrării.') && ok;
 

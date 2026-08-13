@@ -10,7 +10,10 @@
      ------------------------------------------------------------------ */
   var CONFIG = {
     // Adresa pe care ajung solicitările din formular (metoda implicită: mailto).
-    email: 'contact@selectconstruct.ro',
+    email: 'contact@selectconstruct.md',
+
+    // Numărul afișat în mesajele de eroare ale formularului.
+    phone: '069 123 456',
 
     // Opțional: pune aici un endpoint care primește POST (Formspree, Getform,
     // Netlify Forms, propriul tău backend). Dacă e completat, formularul îl
@@ -18,8 +21,11 @@
     // Exemplu: 'https://formspree.io/f/xxxxxxxx'
     formEndpoint: '',
 
-    // Moneda afișată în calculator.
-    currency: 'lei'
+    // Moneda afișată în calculator (lei moldovenești).
+    currency: 'lei',
+
+    // Formatarea cifrelor (separator de mii).
+    locale: 'ro-MD'
   };
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -153,7 +159,7 @@
           if (start === null) start = ts;
           var p = Math.min((ts - start) / duration, 1);
           var eased = 1 - Math.pow(1 - p, 3);
-          el.textContent = Math.round(target * eased).toLocaleString('ro-RO') + suffix(el);
+          el.textContent = Math.round(target * eased).toLocaleString(CONFIG.locale) + suffix(el);
           if (p < 1) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
@@ -221,22 +227,24 @@
   };
 
   var RATES = {
-    renovare:   { min: 420,  max: 720,  days: 0.55, mat: 0.55, basis: 'utila',  label: 'Renovare completă' },
-    zugravit:   { min: 110,  max: 175,  days: 0.09, mat: 0.30, basis: 'utila',  label: 'Zugrăveli' },
-    baie:       { min: 950,  max: 1600, days: 2.00, mat: 0.50, basis: 'utila',  label: 'Baie la cheie' },
-    bucatarie:  { min: 620,  max: 1050, days: 0.90, mat: 0.42, basis: 'utila',  label: 'Bucătărie la cheie' },
-    gresie:     { min: 75,   max: 125,  days: 0.16, mat: 0.35, basis: 'montaj', label: 'Gresie / faianță' },
-    parchet:    { min: 38,   max: 65,   days: 0.07, mat: 0.25, basis: 'montaj', label: 'Parchet' },
-    rigips:     { min: 95,   max: 160,  days: 0.20, mat: 0.85, basis: 'montaj', label: 'Gips-carton' },
-    instalatii: { min: 130,  max: 220,  days: 0.22, mat: 0.65, basis: 'utila',  label: 'Instalații' }
+    renovare:   { min: 1200, max: 2200, days: 0.55, mat: 0.55, basis: 'utila',  label: 'Renovare completă' },
+    zugravit:   { min: 380,  max: 600,  days: 0.09, mat: 0.30, basis: 'utila',  label: 'Zugrăveli' },
+    baie:       { min: 3200, max: 5500, days: 2.00, mat: 0.50, basis: 'utila',  label: 'Baie la cheie' },
+    bucatarie:  { min: 1900, max: 3300, days: 0.90, mat: 0.42, basis: 'utila',  label: 'Bucătărie la cheie' },
+    gresie:     { min: 230,  max: 390,  days: 0.16, mat: 0.35, basis: 'montaj', label: 'Gresie / faianță' },
+    parchet:    { min: 110,  max: 190,  days: 0.07, mat: 0.25, basis: 'montaj', label: 'Parchet' },
+    rigips:     { min: 280,  max: 480,  days: 0.20, mat: 0.85, basis: 'montaj', label: 'Gips-carton' },
+    instalatii: { min: 400,  max: 700,  days: 0.22, mat: 0.65, basis: 'utila',  label: 'Instalații' }
   };
 
-  function roundTo(value, step) {
+  // rotunjire „de deviz": cu cât suma e mai mare, cu atât pasul e mai mare
+  function niceRound(value) {
+    var step = value >= 20000 ? 500 : value >= 5000 ? 100 : 50;
     return Math.round(value / step) * step;
   }
 
   function formatLei(value) {
-    return Math.round(value).toLocaleString('ro-RO');
+    return Math.round(value).toLocaleString(CONFIG.locale);
   }
 
   function initCalculator() {
@@ -274,12 +282,12 @@
 
       if (demolition) { min *= 1.12; max *= 1.15; }
 
-      // rotunjire la 50 lei ca să nu pară un preț „exact"
-      min = roundTo(min, 50);
-      max = roundTo(max, 50);
+      // rotunjim ca să nu pară un preț „exact"
+      min = niceRound(min);
+      max = niceRound(max);
 
       var days = Math.max(2, Math.ceil(area * rate.days * (demolition ? 1.18 : 1)));
-      var materials = roundTo(((min + max) / 2) * rate.mat, 100);
+      var materials = niceRound(((min + max) / 2) * rate.mat);
 
       minEl.textContent = formatLei(min);
       maxEl.textContent = formatLei(max);
@@ -305,7 +313,9 @@
     if (!form) return;
 
     var status = $('#formStatus');
-    var phoneRe = /^(\+?4?0)[\s.-]?7\d{2}[\s.-]?\d{3}[\s.-]?\d{3}$/;
+    // numere din Republica Moldova: mobil (06x, 07x) și fix Chișinău (022),
+    // scrise local (069 123 456) sau internațional (+373 69 123 456)
+    var phoneRe = /^(\+?373[\s.-]?|0)(6\d|7[6-9]|22)[\s.-]?\d{3}[\s.-]?\d{3}$/;
     var emailRe = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
     function setError(field, message) {
@@ -323,7 +333,7 @@
       var type = $('#fType'), area = $('#fArea'), gdpr = $('#fGdpr');
 
       ok = setError(name, name.value.trim().length < 3 ? 'Scrie numele tău complet.' : '') && ok;
-      ok = setError(phone, phoneRe.test(phone.value.trim()) ? '' : 'Număr de telefon invalid (ex: 0712 345 678).') && ok;
+      ok = setError(phone, phoneRe.test(phone.value.trim()) ? '' : 'Număr de telefon invalid (ex: 069 123 456).') && ok;
       ok = setError(email, email.value.trim() && !emailRe.test(email.value.trim()) ? 'Adresa de e-mail nu pare corectă.' : '') && ok;
       ok = setError(type, type.value ? '' : 'Alege tipul lucrării.') && ok;
 
@@ -342,7 +352,7 @@
 
     function buildBody(data) {
       return [
-        'Solicitare ofertă — selectconstruct.ro',
+        'Solicitare ofertă — selectconstruct.md',
         '',
         'Nume: ' + (data.nume || '—'),
         'Telefon: ' + (data.telefon || '—'),
@@ -391,7 +401,7 @@
             show('Mulțumim! Te sunăm în aceeași zi lucrătoare.', 'ok');
           })
           .catch(function () {
-            show('Nu am putut trimite mesajul. Sună-ne te rugăm la 0712 345 678.', 'err');
+            show('Nu am putut trimite mesajul. Sună-ne te rugăm la ' + CONFIG.phone + '.', 'err');
           })
           .then(function () { button.disabled = false; });
         return;

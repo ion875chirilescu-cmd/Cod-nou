@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>SELECT CONSTRUCT — Reparații și renovări interioare</title>
 <meta name="description" content="SELECT CONSTRUCT execută reparații și renovări interioare la cheie în Chișinău: zugrăveli, gips-carton, gresie și faianță, parchet, băi și bucătării, instalații. Deviz clar, termene respectate, garanție 24 de luni." />
-<meta name="theme-color" content="#12161C" />
+<meta name="theme-color" content="#0D0E10" />
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml" />
 <link rel="canonical" href="https://www.selectconstruct.md/" />
 
@@ -16,21 +16,18 @@
 <meta property="og:description" content="Renovări interioare la cheie, cu deviz transparent și garanție 24 de luni. Cere o ofertă gratuită." />
 <meta property="og:image" content="assets/img/logo.svg" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="preload" href="assets/fonts/archivo-400-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="assets/fonts/bodoni-moda-700-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="assets/css/fonts.css" />
 <link rel="stylesheet" href="assets/css/styles.css" />
 
-<!-- Aplicăm tema înainte de primul randare, ca să nu clipească ecranul -->
+<!-- Site-ul e proiectat pe întuneric; varianta luminoasă e o alegere a
+     vizitatorului. Aplicăm tema înainte de prima randare, ca să nu clipească. -->
 <script>
 (function () {
-  try {
-    var saved = localStorage.getItem('sc-theme');
-    var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
+  var theme = 'dark';
+  try { if (localStorage.getItem('sc-theme') === 'light') theme = 'light'; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', theme);
 })();
 </script>
 
@@ -80,9 +77,8 @@
   <div class="container header-inner">
     <a class="brand" href="#top" aria-label="SELECT CONSTRUCT — acasă">
       <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
-        <rect width="48" height="48" rx="12" fill="currentColor" />
-        <path d="M12 34V14h20" fill="none" stroke="#E9A13B" stroke-width="5" stroke-linecap="square" />
-        <path d="M20 34h16V22" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="square" />
+        <path d="M7 31V9h21" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="square" />
+        <path d="M20 39h21V17" fill="none" stroke="#F5C242" stroke-width="5" stroke-linecap="square" />
       </svg>
       <span class="brand-text">
         <strong>SELECT</strong>
@@ -140,6 +136,10 @@
           <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4 10-10"/></svg> Termen scris în contract, cu penalizări dacă îl depășim</li>
           <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4 10-10"/></svg> Un singur om de legătură pe toată durata lucrării</li>
         </ul>
+
+        <a class="hero-scroll" href="#servicii" aria-label="Vezi serviciile">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v17m0 0-7-7m7 7 7-7"/></svg>
+        </a>
       </div>
 
       <div class="hero-visual">
@@ -168,11 +168,11 @@
           <!-- lumina -->
           <path d="M248 90 340 60v210l-92-40z" fill="#FFFFFF" opacity=".35" />
           <!-- tablouri -->
-          <rect x="392" y="70" width="96" height="72" rx="6" fill="#E9A13B" opacity=".85" />
+          <rect x="392" y="70" width="96" height="72" rx="6" fill="#F5C242" opacity=".85" />
           <rect x="504" y="70" width="62" height="72" rx="6" fill="#12161C" opacity=".12" />
           <!-- raft -->
           <rect x="392" y="168" width="174" height="8" rx="4" fill="#12161C" opacity=".18" />
-          <rect x="404" y="142" width="12" height="26" rx="3" fill="#E9A13B" />
+          <rect x="404" y="142" width="12" height="26" rx="3" fill="#F5C242" />
           <rect x="424" y="148" width="12" height="20" rx="3" fill="#12161C" opacity=".3" />
           <rect x="444" y="138" width="12" height="30" rx="3" fill="#12161C" opacity=".2" />
 
@@ -199,27 +199,18 @@
           <path d="M118 314h44l-7 46h-30z" fill="#D97F45" />
 
           <!-- scara -->
-          <g stroke="#E9A13B" stroke-width="9" stroke-linecap="round" fill="none">
+          <g stroke="#F5C242" stroke-width="9" stroke-linecap="round" fill="none">
             <path d="M212 356 236 216M268 356 248 216" />
             <path d="M232 246h20M228 282h28M223 318h34" />
           </g>
 
           <!-- galeata + trafalet -->
           <path d="M286 322h44l-6 34h-32z" fill="#12161C" opacity=".75" />
-          <rect x="284" y="314" width="48" height="12" rx="5" fill="#E9A13B" />
+          <rect x="284" y="314" width="48" height="12" rx="5" fill="#F5C242" />
           <path d="M300 314c0-14 4-22 14-22" stroke="#9AA3AF" stroke-width="4" fill="none" />
           <rect x="196" y="286" width="10" height="70" rx="5" fill="#9AA3AF" transform="rotate(14 201 321)" />
-          <rect x="176" y="266" width="42" height="18" rx="8" fill="#E9A13B" transform="rotate(14 197 275)" />
+          <rect x="176" y="266" width="42" height="18" rx="8" fill="#F5C242" transform="rotate(14 197 275)" />
         </svg>
-
-        <div class="float-badge float-badge--1">
-          <span class="fb-icon">🛡️</span>
-          <span><strong>24 luni</strong><br />garanție manoperă</span>
-        </div>
-        <div class="float-badge float-badge--2">
-          <span class="fb-icon">📋</span>
-          <span><strong>Deviz fix</strong><br />înainte de prima zi</span>
-        </div>
       </div>
     </div>
 
@@ -421,28 +412,28 @@
 
         <div class="feature-list">
           <div class="feature">
-            <span class="feature-ico">🧾</span>
+            <span class="feature-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4M10 12h5M10 16h3"/></svg></span>
             <div>
               <h3>Preț ferm, pus pe hârtie</h3>
               <p>Devizul se modifică doar dacă ceri tu lucrări în plus, iar modificarea o semnezi înainte de execuție.</p>
             </div>
           </div>
           <div class="feature">
-            <span class="feature-ico">📸</span>
+            <span class="feature-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3.5L9 5h6l1.5 3H20v11H4z"/><circle cx="12" cy="13.5" r="3.5"/></svg></span>
             <div>
               <h3>Raport săptămânal cu poze</h3>
               <p>Chiar dacă ești în altă țară, vezi exact unde s-a ajuns. Fără „mai avem puțin" spus la telefon.</p>
             </div>
           </div>
           <div class="feature">
-            <span class="feature-ico">🧹</span>
+            <span class="feature-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
             <div>
               <h3>Protejăm și curățăm</h3>
               <p>Acoperim mobila și pardoseala, scoatem molozul pe cheltuiala noastră și predăm locuința curată.</p>
             </div>
           </div>
           <div class="feature">
-            <span class="feature-ico">🧰</span>
+            <span class="feature-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3L3 8.5"/><path d="M3 3.5v5h5"/></svg></span>
             <div>
               <h3>Revenim la un telefon</h3>
               <p>Dacă apare o problemă în garanție, venim în maximum 5 zile lucrătoare și o rezolvăm fără discuții.</p>
@@ -567,10 +558,10 @@
               <rect x="112" y="248" width="144" height="34" rx="6" fill="#FBF8F3" />
               <g stroke="#E6DFD4" stroke-width="4"><path d="M126 252v26M144 252v26M162 252v26M180 252v26M198 252v26M216 252v26M234 252v26" /></g>
               <!-- tablouri + lampă -->
-              <rect x="648" y="92" width="86" height="64" rx="4" fill="#D98324" opacity=".85" />
+              <rect x="648" y="92" width="86" height="64" rx="4" fill="#F5C242" opacity=".85" />
               <rect x="754" y="100" width="58" height="56" rx="4" fill="#33465A" opacity=".35" />
               <path d="M470 44v42" stroke="#33465A" stroke-width="3" />
-              <path d="M446 86h48l-10 26h-28z" fill="#D98324" />
+              <path d="M446 86h48l-10 26h-28z" fill="#F5C242" />
               <!-- canapea -->
               <rect x="330" y="212" width="252" height="60" rx="14" fill="#33465A" />
               <rect x="346" y="226" width="106" height="40" rx="10" fill="#42586F" />
@@ -691,8 +682,8 @@
         </form>
 
         <output class="calc-result" id="calcResult" for="calcForm">
-          <p class="calc-label">Estimare manoperă</p>
-          <p class="calc-value"><span id="calcMin">0</span> – <span id="calcMax">0</span> <em>lei (MDL)</em></p>
+          <p class="calc-label">Estimare manoperă · MDL</p>
+          <p class="calc-value"><span id="calcMin">0</span> – <span id="calcMax">0</span> <em>lei</em></p>
           <p class="calc-per"><span id="calcPer">0</span> lei/mp în medie</p>
           <div class="calc-rows">
             <div><span>Durată estimată</span><strong id="calcDays">—</strong></div>
@@ -822,23 +813,23 @@
 
         <ul class="contact-list">
           <li>
-            <span class="ci-ico">📞</span>
+            <span class="ci-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span>
             <div><strong>Telefon</strong><a href="tel:+37376986728">076 986 728</a></div>
           </li>
           <li>
-            <span class="ci-ico">✉️</span>
+            <span class="ci-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="m3 7 9 6 9-6"/></svg></span>
             <div><strong>E-mail</strong><a href="mailto:contact@selectconstruct.md">contact@selectconstruct.md</a></div>
           </li>
           <li>
-            <span class="ci-ico">📍</span>
+            <span class="ci-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
             <div><strong>Birou</strong><span>str. Exemplu 10, Chișinău</span></div>
           </li>
           <li>
-            <span class="ci-ico">🕗</span>
+            <span class="ci-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
             <div><strong>Program</strong><span>Luni–Vineri 08:00–18:00 · Sâmbătă 09:00–14:00</span></div>
           </li>
           <li>
-            <span class="ci-ico">🗺️</span>
+            <span class="ci-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg></span>
             <div><strong>Zonă acoperită</strong><span>Chișinău și localitățile la maximum 50 km</span></div>
           </li>
         </ul>
@@ -922,9 +913,8 @@
     <div class="footer-brand">
       <a class="brand" href="#top">
         <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
-          <rect width="48" height="48" rx="12" fill="currentColor" />
-          <path d="M12 34V14h20" fill="none" stroke="#E9A13B" stroke-width="5" stroke-linecap="square" />
-          <path d="M20 34h16V22" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="square" />
+          <path d="M7 31V9h21" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="square" />
+          <path d="M20 39h21V17" fill="none" stroke="#F5C242" stroke-width="5" stroke-linecap="square" />
         </svg>
         <span class="brand-text"><strong>SELECT</strong><em>CONSTRUCT</em></span>
       </a>

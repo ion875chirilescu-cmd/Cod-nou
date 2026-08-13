@@ -10,12 +10,36 @@ renovări interioare**.
 site/
   index.html                # întreaga pagină (o singură pagină, cu ancore)
   assets/
-    css/styles.css          # stiluri, tokeni de culoare, temă luminoasă/întunecată
+    css/styles.css          # stiluri, tokeni de culoare, cele două teme
+    css/fonts.css           # declarațiile @font-face
     js/main.js              # meniu, filtre, calculator, formular, animații
+    fonts/                  # fonturile în format woff2, găzduite local
     img/
       favicon.svg           # iconița din tab
       logo.svg              # logo pentru social media / documente
 ```
+
+## 🎨 Direcție vizuală
+
+Editorial pe fundal întunecat: negru aproape pur, alb cald și **un singur accent
+galben-auriu**. Fără umbre — separările se fac cu linii de 1px și cu spațiu.
+Colțurile sunt aproape drepte (2–3px), nu rotunjite.
+
+Tipografia are trei roluri distincte:
+
+| Rol | Font | Unde apare |
+|---|---|---|
+| Titluri | **Bodoni Moda** (serifă de contrast) | `h1`, `h2`, cifrele mari, citatul |
+| Text | **Archivo** (grotesc) | paragrafe, `h3`, navigație, formular |
+| Etichete și cifre | **IBM Plex Mono** | supratitluri, butoane, tag-uri, deviz |
+
+Mono-ul nu e decor: dă conținutului tehnic (suprafețe, prețuri, durate) aspectul
+unui deviz, care e exact ce vinde firma.
+
+**Tema întunecată e designul site-ului**, nu o opțiune — se aplică din start,
+indiferent de setarea sistemului. Butonul din header comută pe varianta luminoasă
+(hârtie caldă, auriu închis), iar alegerea se ține minte. Ambele teme au fost
+verificate la contrast: tot textul trece pragul WCAG AA (4.5:1).
 
 ## 🚀 Rulare locală
 
@@ -120,11 +144,22 @@ renovare: { min: 1200, max: 2200, days: 0.55, mat: 0.55, basis: 'utila', label: 
 Nivelurile de finisaj (Standard / Premium / Lux) sunt multiplicatori setați în
 `index.html`, pe `input[name="calcLevel"]` (1 / 1,22 / 1,5).
 
-## 🎨 Culori
+## 🖌️ Culori și fonturi
 
 Paleta se schimbă dintr-un singur loc — variabilele din `:root`, în
-`assets/css/styles.css`. Accentul este `--accent: #D98324` (chihlimbar), iar
-tema întunecată își redefinește tokenii în `:root[data-theme="dark"]`.
+`assets/css/styles.css`. Accentul este `--accent: #F5C242`. Tema luminoasă își
+redefinește tokenii în `:root[data-theme="light"]`; nicio componentă nu-și
+definește culoarea direct, totul trece prin tokeni.
+
+Fonturile sunt **găzduite local** în `assets/fonts/` (licență SIL Open Font
+License), nu încărcate de la Google. Așa pagina se încarcă mai repede, nu depinde
+de un server extern și nu trimite datele vizitatorilor către Google.
+
+Ca să regenerezi fișierele (alt font sau altă greutate), descarcă familia de pe
+[Google Fonts](https://fonts.google.com), pune fișierele `.woff2` în
+`assets/fonts/` și actualizează `assets/css/fonts.css`. Păstrează subseturile
+**latin** și **latin-ext** — al doilea conține diacriticele românești (ă â î ș ț);
+fără el, textul cade pe un font de rezervă exact la literele cu semne diacritice.
 
 ## 🌐 Publicare
 

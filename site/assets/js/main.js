@@ -44,7 +44,7 @@
       document.documentElement.setAttribute('data-theme', next);
       try { localStorage.setItem('sc-theme', next); } catch (e) { /* stocare indisponibilă */ }
       var meta = $('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', next === 'dark' ? '#0E1116' : '#12161C');
+      if (meta) meta.setAttribute('content', next === 'dark' ? '#0D0E10' : '#F7F5F0');
     });
   }
 
@@ -116,7 +116,7 @@
      4. APARIȚIE LA DERULARE
      ------------------------------------------------------------------ */
   function initReveal() {
-    var targets = $$('.section-head, .service, .step, .work, .testimonial, .faq-item, .feature, .quote-card, .mini-stats, .calc-form, .calc-result, .contact-form, .contact-list, .ba-wrap');
+    var targets = $$('.section-head, .services, .step, .work, .testimonial, .faq-item, .feature, .quote-card, .mini-stats, .calc-form, .calc-result, .contact-form, .contact-list, .ba-wrap');
     if (reduceMotion || !('IntersectionObserver' in window)) return;
 
     targets.forEach(function (el) { el.classList.add('reveal'); });

@@ -59,9 +59,9 @@ Toate datele de mai jos sunt **exemple** și trebuie înlocuite cu cele reale:
    `application/ld+json` din `<head>`.
 4. **Domeniu** — `https://www.selectconstruct.md/` din `<link rel="canonical">`
    și din marcajele Open Graph.
-5. **Cifre și lucrări** — din statisticile hero (`data-count`), doar „4 oameni în
-   echipă" e reală. „12 ani de experiență", „180 lucrări finalizate" și „98% clienți
-   mulțumiți" sunt estimări puse ca să fie credibile pentru o echipă de patru oameni —
+5. **Cifre și lucrări** — din statisticile hero (`data-count`), „4 oameni în echipă"
+   și „5 ani de experiență" sunt reale. „75 lucrări finalizate" și „98% clienți
+   mulțumiți" sunt estimări puse ca să fie credibile pentru patru oameni în cinci ani —
    înlocuiește-le cu cifrele tale. Lucrările din portofoliu și recenziile sunt tot exemple.
 
 ### Fotografii reale în portofoliu

@@ -64,3 +64,17 @@ src/
   storage.ts             # Wrapper AsyncStorage
   types.ts               # Tipuri TypeScript
 ```
+
+---
+
+## 🏗️ Site SELECT CONSTRUCT
+
+Acest repository mai conține un proiect separat, în folderul [`site/`](site/): site-ul de
+prezentare al firmei de construcții **SELECT CONSTRUCT** (reparații și renovări interioare).
+
+Este un site static — HTML, CSS și JavaScript, fără framework și fără pas de build. Detalii
+despre structură, personalizare și publicare în [`site/README.md`](site/README.md).
+
+```bash
+cd site && python3 -m http.server 8000
+```

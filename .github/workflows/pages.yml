@@ -1,0 +1,52 @@
+# Publică folderul `site/` pe GitHub Pages.
+#
+# Înainte de prima rulare, activează Pages în repository:
+#   Settings → Pages → Build and deployment → Source: „GitHub Actions"
+#
+# După activare, orice modificare în `site/` se publică singură, în ~1 minut.
+# Adresa rezultată: https://<utilizator>.github.io/<repository>/
+#
+# Se publică DOAR folderul `site/`. Aplicația Expo din rădăcina repository-ului
+# rămâne privată.
+
+name: Publică site-ul
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/select-construct-website-70xnec]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# o singură publicare o dată; dacă vin mai multe modificări, contează ultima
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publica:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publicare.outputs.page_url }}
+    steps:
+      - name: Ia codul
+        uses: actions/checkout@v4
+
+      - name: Pregătește Pages
+        uses: actions/configure-pages@v5
+
+      - name: Împachetează folderul site/
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Publică
+        id: publicare
+        uses: actions/deploy-pages@v4

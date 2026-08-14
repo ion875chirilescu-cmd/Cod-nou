@@ -241,6 +241,31 @@ fără el, textul cade pe un font de rezervă exact la literele cu semne diacrit
 
 ## 🌐 Publicare
 
-Fiind un site pur static, merge oriunde: GitHub Pages, Netlify, Vercel,
-Cloudflare Pages sau un hosting clasic prin FTP. Urcă tot conținutul folderului
-`site/` în rădăcina domeniului.
+Toate căile din pagină sunt relative, deci site-ul merge la fel din rădăcina
+unui domeniu sau dintr-un subdirector. Tot folderul are sub 1 MB.
+
+### GitHub Pages (gratuit, configurat deja)
+
+Repository-ul conține `.github/workflows/pages.yml`, care publică folderul
+`site/` automat. Trebuie activat o singură dată:
+
+1. În repository: **Settings → Pages**
+2. La **Build and deployment → Source**, alege **„GitHub Actions"**
+3. În fila **Actions**, pornește o dată „Publică site-ul" (butonul *Run workflow*)
+
+Adresa rezultată: `https://<utilizator>.github.io/<repository>/`
+
+De atunci, orice modificare din `site/` se publică singură, în circa un minut.
+Se publică **doar** folderul `site/` — aplicația Expo din rădăcină rămâne privată.
+
+### Alte variante
+
+Netlify, Vercel sau Cloudflare Pages: creezi un proiect, indici folderul `site/`
+și nu setezi nicio comandă de build. Pe hosting clasic prin FTP: urci conținutul
+folderului `site/` în rădăcina domeniului.
+
+### Domeniu propriu
+
+Când ai domeniul (`selectconstruct.md`), îl legi din setările platformei alese.
+Actualizează atunci și `<link rel="canonical">` și marcajele Open Graph din
+`index.html`, care indică deja spre adresa finală.

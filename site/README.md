@@ -96,34 +96,46 @@ să arate bine și fără poze. **Direcția vizuală întunecată trăiește în
 fotografii** — sunt singurul element luminos din pagină, deci ele fac diferența
 între „arată bine" și „arată ca al unei firme serioase".
 
-Pozele se pun în `assets/img/lucrari/`. Nu trebuie modificat CSS-ul: încadrarea,
-decuparea și umbra de sub etichetă sunt deja pregătite.
+Slot-urile pentru fotografii sunt **deja pregătite în pagină**. Ca să adaugi o
+poză, o copiezi în `assets/img/lucrari/` cu numele așteptat — atât. Nu se
+modifică nici HTML-ul, nici CSS-ul.
 
-**În galerie** — înlocuiește în `index.html`:
+Lista completă de nume e în [`assets/img/lucrari/README.md`](assets/img/lucrari/README.md):
+`hero.jpg`, `renovare-completa.jpg`, `baie.jpg`, `bucatarie.jpg`,
+`zugraveli.jpg`, `gips-carton.jpg`, `parchet.jpg`.
 
-```html
-<div class="work-img pattern-parquet"><span class="work-tag">Renovare completă</span></div>
-```
+Mecanismul: fiecare miniatură are un model desenat în CSS și, deasupra lui, o
+fotografie pre-legată, ascunsă. La încărcarea paginii, `initPhotos()` din
+`main.js` verifică fiecare imagine — dacă fișierul există, o arată; dacă
+lipsește, scoate elementul și rămâne modelul. Așa site-ul arată bine în orice
+stadiu, iar pozele se pot adăuga una câte una, pe măsură ce le ai.
 
-cu:
+**Comparația înainte/după** rămâne pe desene până ai două fotografii ale
+**aceleiași camere**, din același loc și unghi. Două poze diferite nu
+funcționează acolo — cursorul nu ar avea ce compara.
 
-```html
-<div class="work-img">
-  <img src="assets/img/lucrari/botanica-living.jpg" alt="Living renovat în Botanica" loading="lazy" />
-  <span class="work-tag">Renovare completă</span>
-</div>
-```
+### De unde iei fotografii până ai propriile poze
 
-**În cap de pagină** — o fotografie bună poate lua locul ilustrației. Înlocuiește
-tot blocul `<svg class="hero-illustration">…</svg>` cu:
+Dacă vrei imagini profesionale acum, ia-le **doar** de pe site-uri cu licență
+liberă pentru uz comercial. Nu lua poze din Google Images sau de pe site-urile
+concurenței: majoritatea sunt protejate de drepturi de autor, iar agențiile de
+imagini urmăresc folosirea neautorizată și trimit facturi.
 
-```html
-<img class="hero-photo" src="assets/img/lucrari/hero.jpg" alt="Apartament renovat în Chișinău" />
-```
+Surse sigure, gratuite, fără obligație de atribuire:
 
-**În comparația înainte/după** — înlocuiește fiecare `<svg>` din `.ba-layer` cu
-un `<img>`. Cele două poze trebuie făcute **din exact același loc și unghi**,
-altfel cursorul nu mai are ce compara.
+- [Unsplash — renovări](https://unsplash.com/s/photos/interior-renovation)
+- [Unsplash — interioare de apartament](https://unsplash.com/s/photos/apartment-interior)
+- [Pixabay — interioare](https://pixabay.com/images/search/apartment%20interior/)
+
+Caută în engleză, dă mult mai multe rezultate: `renovated apartment interior`,
+`modern bathroom interior`, `kitchen renovation`, `wooden floor living room`,
+`drywall ceiling lighting`.
+
+Ține minte însă: fotografiile de stoc arată bine, dar **nu sunt lucrările tale**.
+De aceea secțiunea se numește „Ce fel de lucrări facem", cu descrieri de servicii,
+nu „Din portofoliul nostru" cu proiecte, suprafețe și cartiere. Când ai propriile
+poze, schimbă titlul secțiunii înapoi în „Din portofoliul nostru" și pune în
+descrieri datele reale ale fiecărei lucrări — atunci devine dovadă, nu decor.
 
 #### Cum să faci pozele cu telefonul
 

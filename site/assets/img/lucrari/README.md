@@ -1,8 +1,28 @@
-# Fotografii de la lucrări
+# Fotografii
 
-Pune aici pozele de la lucrările executate. Fișierele din acest folder apar în
-portofoliul de pe pagină după ce le legi în `index.html` — vezi instrucțiunile
-din `site/README.md`, secțiunea „Fotografii reale în portofoliu".
+Copiază aici fișierele cu **exact aceste nume**. Apar automat pe site — nu
+trebuie modificat niciun fișier de cod. Dacă un nume lipsește, în locul lui
+rămâne modelul grafic desenat în CSS, fără imagine ruptă.
 
-Denumire recomandată: `cartier-tip-lucrare.jpg`, cu litere mici și cratime.
-Exemple: `botanica-living.jpg`, `centru-baie-dupa.jpg`, `riscani-bucatarie.jpg`.
+| Fișier                  | Unde apare              | Ce trebuie să arate                                   |
+|-------------------------|-------------------------|-------------------------------------------------------|
+| `hero.jpg`              | cap de pagină           | cel mai bun cadru pe care îl ai, interior luminos      |
+| `renovare-completa.jpg` | „Apartament la cheie"   | living sau cameră renovată complet                     |
+| `baie.jpg`              | „Baie completă"         | baie finisată, cu duș sau cadă                          |
+| `bucatarie.jpg`         | „Bucătărie la cheie"    | bucătărie cu mobilier montat                            |
+| `zugraveli.jpg`         | „Zugrăveli și finisaje" | pereți proaspăt vopsiți, cameră goală sau mobilată     |
+| `gips-carton.jpg`       | „Tavane false și pereți"| tavan fals, de preferat cu lumină indirectă             |
+| `parchet.jpg`           | „Parchet și pardoseli"  | pardoseală de lemn, cadru care arată suprafața         |
+
+## Cerințe
+
+- **Orizontale** (landscape), minimum 1600 px pe latura lungă, ideal 2000–2400.
+- Sub ~300 KB fiecare. Comprimă-le pe [squoosh.app](https://squoosh.app) —
+  e gratuit, merge direct în browser, nu trebuie instalat nimic.
+- Format `.jpg`.
+
+## Ce se potrivește cu designul
+
+Site-ul e întunecat, cu accent galben-auriu. Merg cel mai bine cadrele cu
+**lemn cald, pereți în tonuri neutre și lumină naturală laterală**. Evită pozele
+cu dominantă albastră-rece sau puternic saturate — se bat cap în cap cu paleta.

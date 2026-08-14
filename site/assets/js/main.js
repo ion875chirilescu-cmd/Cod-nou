@@ -429,7 +429,29 @@
   }
 
   /* ------------------------------------------------------------------
-     10. AN CURENT ÎN FOOTER
+     10. FOTOGRAFII OPȚIONALE
+     ------------------------------------------------------------------
+     Miniaturile din portofoliu și imaginea din hero au fiecare o fotografie
+     pre-legată. Dacă fișierul există în assets/img/lucrari/, o arătăm; dacă
+     lipsește, scoatem elementul și rămâne desenul de dedesubt. Așa se pot
+     adăuga poze doar copiindu-le în folder, fără să se atingă HTML-ul.
+     ------------------------------------------------------------------ */
+  function initPhotos() {
+    $$('.work-img img, .hero-photo').forEach(function (img) {
+      var arata  = function () { img.classList.add('is-ready'); };
+      var renunt = function () { img.remove(); };
+
+      if (img.complete) {
+        (img.naturalWidth > 0 ? arata : renunt)();
+      } else {
+        img.addEventListener('load', arata);
+        img.addEventListener('error', renunt);
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     11. AN CURENT ÎN FOOTER
      ------------------------------------------------------------------ */
   function initYear() {
     var el = $('#year');
@@ -449,6 +471,7 @@
     initBeforeAfter();
     initCalculator();
     initContactForm();
+    initPhotos();
     initYear();
   }
 

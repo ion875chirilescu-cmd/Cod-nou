@@ -143,6 +143,7 @@
       </div>
 
       <div class="hero-visual">
+        <img class="hero-photo" src="assets/img/lucrari/hero.jpg" alt="Interior de apartament renovat" />
         <svg class="hero-illustration" viewBox="0 0 640 500" role="img" aria-label="Ilustrație: interior de apartament renovat">
           <defs>
             <linearGradient id="wallGrad" x1="0" y1="0" x2="0" y2="1">
@@ -471,7 +472,7 @@
     <div class="container">
       <header class="section-head">
         <p class="eyebrow"><span class="dot"></span> Lucrări</p>
-        <h2>Din portofoliul nostru</h2>
+        <h2>Ce fel de lucrări facem</h2>
         <p class="section-sub">Filtrează după tipul de lucrare care te interesează.</p>
       </header>
 
@@ -483,52 +484,73 @@
         <button class="chip" type="button" data-filter="zugravit" role="tab" aria-selected="false">Zugrăveli</button>
       </div>
 
+      <!-- Fiecare miniatură are un model desenat în CSS și o fotografie opțională.
+           Fotografia apare automat dacă fișierul există în assets/img/lucrari/;
+           dacă lipsește, rămâne modelul. Vezi site/README.md. -->
       <div class="grid gallery" id="gallery">
         <figure class="work" data-cat="apartament">
-          <div class="work-img pattern-parquet"><span class="work-tag">Renovare completă</span></div>
+          <div class="work-img pattern-parquet">
+            <img src="assets/img/lucrari/renovare-completa.jpg" alt="Living de apartament renovat complet" loading="lazy" />
+            <span class="work-tag">Renovare completă</span>
+          </div>
           <figcaption>
-            <h3>Apartament 3 camere — Botanica</h3>
-            <p>72 mp • 6 săptămâni • recompartimentare, instalații noi, finisaje complete</p>
+            <h3>Apartament la cheie</h3>
+            <p>Recompartimentări, instalații noi, finisaje complete • 4–7 săptămâni pentru 2–3 camere</p>
           </figcaption>
         </figure>
 
         <figure class="work" data-cat="baie">
-          <div class="work-img pattern-tiles"><span class="work-tag">Baie la cheie</span></div>
+          <div class="work-img pattern-tiles">
+            <img src="assets/img/lucrari/baie.jpg" alt="Baie modernă cu duș și gresie format mare" loading="lazy" />
+            <span class="work-tag">Baie la cheie</span>
+          </div>
           <figcaption>
-            <h3>Baie cu duș walk-in — Centru</h3>
-            <p>6 mp • 3 săptămâni • hidroizolație, gresie format mare, mobilier suspendat</p>
+            <h3>Baie completă</h3>
+            <p>Hidroizolație, gresie format mare, cabină walk-in, mobilier suspendat • 2–3 săptămâni</p>
           </figcaption>
         </figure>
 
         <figure class="work" data-cat="bucatarie">
-          <div class="work-img pattern-grid"><span class="work-tag">Bucătărie</span></div>
+          <div class="work-img pattern-grid">
+            <img src="assets/img/lucrari/bucatarie.jpg" alt="Bucătărie modernă cu mobilier și blat de lucru" loading="lazy" />
+            <span class="work-tag">Bucătărie</span>
+          </div>
           <figcaption>
-            <h3>Bucătărie deschisă — Telecentru</h3>
-            <p>14 mp • 2 săptămâni • mutare instalații, faianță metrou, blat quartz</p>
+            <h3>Bucătărie la cheie</h3>
+            <p>Mutarea instalațiilor, faianță, blat, montaj mobilier și electrocasnice • 2–3 săptămâni</p>
           </figcaption>
         </figure>
 
         <figure class="work" data-cat="zugravit">
-          <div class="work-img pattern-paint"><span class="work-tag">Zugrăveli</span></div>
+          <div class="work-img pattern-paint">
+            <img src="assets/img/lucrari/zugraveli.jpg" alt="Cameră cu pereți proaspăt zugrăviți" loading="lazy" />
+            <span class="work-tag">Zugrăveli</span>
+          </div>
           <figcaption>
-            <h3>Reîmprospătare 2 camere — Râșcani</h3>
-            <p>48 mp • 5 zile • glet, lavabilă, vopsit tâmplărie</p>
+            <h3>Zugrăveli și finisaje</h3>
+            <p>Glet fin, amorsă, lavabilă în două straturi, tencuieli decorative • 4–6 zile pentru 2 camere</p>
           </figcaption>
         </figure>
 
         <figure class="work" data-cat="apartament">
-          <div class="work-img pattern-drywall"><span class="work-tag">Gips-carton</span></div>
+          <div class="work-img pattern-drywall">
+            <img src="assets/img/lucrari/gips-carton.jpg" alt="Tavan fals din gips-carton cu lumină indirectă" loading="lazy" />
+            <span class="work-tag">Gips-carton</span>
+          </div>
           <figcaption>
-            <h3>Tavane cu lumină indirectă — Ciocana</h3>
-            <p>54 mp • 10 zile • tavane false, nișă TV, mascare instalații</p>
+            <h3>Tavane false și pereți</h3>
+            <p>Structură zincată, lumină indirectă, nișe, mascări de instalații • 8–12 zile</p>
           </figcaption>
         </figure>
 
-        <figure class="work" data-cat="baie">
-          <div class="work-img pattern-tiles alt"><span class="work-tag">Baie mică</span></div>
+        <figure class="work" data-cat="apartament">
+          <div class="work-img pattern-tiles alt">
+            <img src="assets/img/lucrari/parchet.jpg" alt="Parchet montat într-o cameră de zi" loading="lazy" />
+            <span class="work-tag">Parchet</span>
+          </div>
           <figcaption>
-            <h3>Baie de bloc modernizată — Poșta Veche</h3>
-            <p>4 mp • 12 zile • coloane noi, cadă înlocuită cu duș, mobilier pe comandă</p>
+            <h3>Parchet și pardoseli</h3>
+            <p>Nivelare suport, izolație fonică, montaj parchet, plinte și praguri • 3–5 zile pentru 50 mp</p>
           </figcaption>
         </figure>
       </div>
@@ -536,7 +558,7 @@
       <!-- Înainte / După -->
       <div class="ba-wrap">
         <div class="ba-head">
-          <h3>Înainte și după — living, 26 mp</h3>
+          <h3>Înainte și după</h3>
           <p>Trage de cursor ca să vezi diferența.</p>
         </div>
         <div class="ba" id="beforeAfter">

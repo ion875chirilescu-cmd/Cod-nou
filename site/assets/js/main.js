@@ -44,7 +44,7 @@
       document.documentElement.setAttribute('data-theme', next);
       try { localStorage.setItem('sc-theme', next); } catch (e) { /* stocare indisponibilă */ }
       var meta = $('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', next === 'dark' ? '#0D0E10' : '#F7F5F0');
+      if (meta) meta.setAttribute('content', next === 'dark' ? '#0E0E0E' : '#F6F4F0');
     });
   }
 

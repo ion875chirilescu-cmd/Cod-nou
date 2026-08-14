@@ -11,7 +11,7 @@ site/
   index.html                # întreaga pagină (o singură pagină, cu ancore)
   assets/
     css/styles.css          # stiluri, tokeni de culoare, cele două teme
-    css/fonts.css           # declarațiile @font-face
+    css/fonts.css           # declarațiile @font-face (Jost + Archivo)
     js/main.js              # meniu, filtre, calculator, formular, animații
     fonts/                  # fonturile în format woff2, găzduite local
     img/
@@ -21,20 +21,33 @@ site/
 
 ## 🎨 Direcție vizuală
 
-Editorial pe fundal întunecat: negru aproape pur, alb cald și **un singur accent
-galben-auriu**. Fără umbre — separările se fac cu linii de 1px și cu spațiu.
+Totul pleacă de la siglă: **negru neutru, alb și un singur auriu șampanie**
+(`#C9A96A`). Fără umbre — separările se fac cu linii de 1px și cu spațiu.
 Colțurile sunt aproape drepte (2–3px), nu rotunjite.
 
-Tipografia are trei roluri distincte:
+Tipografia urmează literele din wordmark — geometrice, subțiri, cu spațiere
+mare la majuscule:
 
 | Rol | Font | Unde apare |
 |---|---|---|
-| Titluri | **Bodoni Moda** (serifă de contrast) | `h1`, `h2`, cifrele mari, citatul |
-| Text | **Archivo** (grotesc) | paragrafe, `h3`, navigație, formular |
-| Etichete și cifre | **IBM Plex Mono** | supratitluri, butoane, tag-uri, deviz |
+| Titluri | **Jost** 300 (geometric, subțire) | `h1`, `h2`, cifrele mari, citatul |
+| Text | **Archivo** (grotesc) | paragrafe, `h3`, formular |
+| Etichete | **Jost** 400–500, majuscule spațiate | supratitluri, butoane, tag-uri, deviz |
 
-Mono-ul nu e decor: dă conținutului tehnic (suprafețe, prețuri, durate) aspectul
-unui deviz, care e exact ce vinde firma.
+Jost are aceleași forme circulare ca „SELECT" și „CONSTRUCT" din siglă, iar
+etichetele scrise cu majuscule și spațiere mare repetă direct ritmul acesteia.
+
+### Sigla din pagină
+
+Marca din header și footer e **redesenată în SVG** după sigla firmei: conturul
+de casă, cu „S" alb în stânga și „C" auriu în dreapta. Fiind vectorială, e
+clară la orice dimensiune, cântărește câteva sute de octeți și își ia albul din
+culoarea temei, deci merge și pe fundal deschis.
+
+Ceea ce **nu** conține este fotografia de interior din interiorul mărcii —
+la 36 px din header oricum nu s-ar vedea. Pentru locurile unde e nevoie de
+sigla completă (imagine de partajare pe rețele, documente, semnătură de
+e-mail), folosește fișierul original al firmei.
 
 **Tema întunecată e designul site-ului**, nu o opțiune — se aplică din start,
 indiferent de setarea sistemului. Butonul din header comută pe varianta luminoasă
@@ -199,9 +212,18 @@ Nivelurile de finisaj (Standard / Premium / Lux) sunt multiplicatori setați în
 ## 🖌️ Culori și fonturi
 
 Paleta se schimbă dintr-un singur loc — variabilele din `:root`, în
-`assets/css/styles.css`. Accentul este `--accent: #F5C242`. Tema luminoasă își
-redefinește tokenii în `:root[data-theme="light"]`; nicio componentă nu-și
-definește culoarea direct, totul trece prin tokeni.
+`assets/css/styles.css`:
+
+| Token | Întunecat | Luminos | Rol |
+|---|---|---|---|
+| `--bg` | `#0E0E0E` | `#F6F4F0` | fundalul paginii |
+| `--ink` | `#F4F3F1` | `#161513` | textul principal |
+| `--accent` | `#C9A96A` | `#B08D3E` | auriul: umpluturi, iconuri, linii |
+| `--accent-text` | `#C9A96A` | `#7A6224` | auriul folosit ca text |
+
+Auriul deschis din siglă nu se citește pe hârtie, de aceea tema luminoasă are
+o variantă mai închisă pentru text. Nicio componentă nu-și definește culoarea
+direct — totul trece prin tokeni.
 
 Fonturile sunt **găzduite local** în `assets/fonts/` (licență SIL Open Font
 License), nu încărcate de la Google. Așa pagina se încarcă mai repede, nu depinde

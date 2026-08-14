@@ -114,8 +114,12 @@ poză, o copiezi în `assets/img/lucrari/` cu numele așteptat — atât. Nu se
 modifică nici HTML-ul, nici CSS-ul.
 
 Lista completă de nume e în [`assets/img/lucrari/README.md`](assets/img/lucrari/README.md):
-`hero.jpg`, `renovare-completa.jpg`, `baie.jpg`, `bucatarie.jpg`,
-`zugraveli.jpg`, `gips-carton.jpg`, `parchet.jpg`.
+`hero.webp` (pusă deja), plus `renovare-completa.jpg`, `baie.jpg`,
+`bucatarie.jpg`, `zugraveli.jpg`, `gips-carton.jpg`, `parchet.jpg`.
+
+Fotografia din cap de pagină poate fi **verticală**: slotul ei trece pe raport
+3:4 pe ecran lat și pe 4:3 pe telefon, ca o poză de interior fotografiată în
+picioare să nu-și piardă înălțimea. Miniaturile din galerie rămân orizontale.
 
 Mecanismul: fiecare miniatură are un model desenat în CSS și, deasupra lui, o
 fotografie pre-legată, ascunsă. La încărcarea paginii, `initPhotos()` din

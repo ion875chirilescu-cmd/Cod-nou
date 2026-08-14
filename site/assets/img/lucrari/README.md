@@ -6,7 +6,7 @@ rămâne modelul grafic desenat în CSS, fără imagine ruptă.
 
 | Fișier                  | Unde apare              | Ce trebuie să arate                                   |
 |-------------------------|-------------------------|-------------------------------------------------------|
-| `hero.jpg`              | cap de pagină           | cel mai bun cadru pe care îl ai, interior luminos      |
+| `hero.webp` *(pus)*     | cap de pagină           | cadrul cel mai bun; aici merge și vertical             |
 | `renovare-completa.jpg` | „Apartament la cheie"   | living sau cameră renovată complet                     |
 | `baie.jpg`              | „Baie completă"         | baie finisată, cu duș sau cadă                          |
 | `bucatarie.jpg`         | „Bucătărie la cheie"    | bucătărie cu mobilier montat                            |
@@ -16,10 +16,12 @@ rămâne modelul grafic desenat în CSS, fără imagine ruptă.
 
 ## Cerințe
 
-- **Orizontale** (landscape), minimum 1600 px pe latura lungă, ideal 2000–2400.
+- **Orizontale** (landscape) pentru galerie, minimum 1600 px pe latura lungă.
+  Excepție: cea din cap de pagină poate fi **verticală** — slotul ei își
+  schimbă cadrul după orientare, ca să nu taie înălțimea camerei.
 - Sub ~300 KB fiecare. Comprimă-le pe [squoosh.app](https://squoosh.app) —
   e gratuit, merge direct în browser, nu trebuie instalat nimic.
-- Format `.jpg`.
+- Format `.jpg` sau `.webp` (al doilea e mai mic la aceeași calitate).
 
 ## Ce se potrivește cu designul
 

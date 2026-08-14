@@ -363,13 +363,19 @@ p { margin: 0 0 1rem; }
   border: 1px solid var(--line);
   background: var(--surface);
 }
-/* fotografia din hero stă peste ilustrație și o acoperă când există */
-.hero-photo {
-  position: absolute; inset: 0; z-index: 1;
-  width: 100%; height: 100%; object-fit: cover;
-  visibility: hidden;
+/* Fotografia din hero își impune propriul cadru și înlocuiește ilustrația.
+   Stă ascunsă până se confirmă că fișierul există; dacă lipsește, rămâne
+   desenul. Raportul e vertical, ca să nu tăiem înălțimea unei poze de interior
+   fotografiate în picioare — cadrele astea își pierd tot aerul dacă le turtim. */
+.hero-photo { display: none; }
+.hero-photo.is-ready {
+  display: block;
+  width: 100%; height: auto;
+  aspect-ratio: 3 / 4; object-fit: cover;
+  border: 1px solid var(--line);
+  animation: photoIn .6s ease both;
 }
-.hero-photo.is-ready { visibility: visible; animation: photoIn .6s ease both; }
+.hero-photo.is-ready + .hero-illustration { display: none; }
 
 /* săgeata de derulare, singurul element galben mare din prima pagină */
 .hero-scroll {
@@ -970,6 +976,7 @@ select {
 @media (max-width: 1024px) {
   .hero-inner { grid-template-columns: 1fr; }
   .hero-visual { order: -1; max-width: 560px; }
+  .hero-photo.is-ready { aspect-ratio: 4 / 3; }
   .split, .split--form, .calc { grid-template-columns: 1fr; }
   .calc-result { position: static; }
   .footer-grid { grid-template-columns: 1fr 1fr; }

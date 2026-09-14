@@ -383,7 +383,7 @@ body[data-role="angajat"] .icon-btn.danger{display:none!important}
       <div class="user-line" id="userLineDesktop"></div>
       <div id="dbStamp">—</div>
       <div id="syncStatus" style="margin-top:4px"></div>
-      <div style="margin-top:4px">v6.2 · sincronizare live mai sigură</div>
+      <div style="margin-top:4px">v6.3 · conturi din server pe orice dispozitiv</div>
     </div>
   </aside>
 
@@ -2150,7 +2150,18 @@ function applyCloud(row){
   if(!row) return false;
   let dataChanged=false, authChanged=false;
   if(row.auth && Array.isArray(row.auth.users)){
-    authChanged=Auth.mergeRemote(row.auth); // adoptă conturile dacă sunt mai noi
+    if(sbOn && row.auth.users.length && !Auth.authed()){
+      // pe ecranul de login serverul e sursa unică de adevăr pentru conturi
+      // (așa, orice cont creat pe alt dispozitiv apare aici și login-ul merge)
+      const before=JSON.stringify(Auth.cfg.users);
+      Auth.cfg.users=row.auth.users.map(u=>Object.assign({},u));
+      Auth.cfg.users.forEach(u=>{ if(!u.role||u.role==='admin') u.role='proprietar'; });
+      Auth.cfg.authUpdatedAt=Math.max(Auth.cfg.authUpdatedAt||0, row.auth.updatedAt||0);
+      Auth.saveCfg();
+      authChanged = before!==JSON.stringify(Auth.cfg.users);
+    } else {
+      authChanged=Auth.mergeRemote(row.auth); // logat: îmbină doar dacă sunt mai noi (nu pierde modificări locale)
+    }
   }
   if(row.data && typeof row.data==='object'){
     const rdb=row.data;
@@ -2158,7 +2169,8 @@ function applyCloud(row){
     const newer=((rdb.updatedAt||0)>(DB.updatedAt||0)) || (dbEmpty()&&remoteHasData);
     if(newer && remoteHasData){ DB=rdb; if(!DB.instructors)DB.instructors=[]; localStorage.setItem(KEY,JSON.stringify(DB)); dataChanged=true; }
   }
-  if(!PREVIEW && (dataChanged||authChanged)){ renderStamp(); buildNav(); render(); updateUserLine(); }
+  if(!PREVIEW){ if(dataChanged||authChanged){ renderStamp(); buildNav(); render(); updateUserLine(); } }
+  else if(authChanged){ const g=document.getElementById('authGate'); if(g&&g.classList.contains('show')) Auth.show(); } // reîmprospătează ecranul de login cu conturile noi
   return dataChanged||authChanged;
 }
 const Cloud={
@@ -2177,9 +2189,10 @@ const Cloud={
   schedulePush(){ if(!sbOn)return; clearTimeout(this._t); this._t=setTimeout(()=>this.push(),900); },
   flush(){ if(this._pending) this.push(); },
   startAuto(){ this.stopAuto(); if(!sbOn)return; this._auto=setInterval(()=>{
-      if(!sbOn||PREVIEW||!Auth.authed()) return;
+      if(!sbOn) return;
       if(document.hidden||(navigator.onLine===false)) return;
-      this.pull(); this.flush();
+      this.pull();                 // reîmprospătează și conturile pe ecranul de login
+      if(Auth.authed()) this.flush();
     }, this.AUTO_MS); },
   stopAuto(){ if(this._auto){ clearInterval(this._auto); this._auto=null; } },
   async push(){
